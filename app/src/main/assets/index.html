@@ -1,0 +1,2196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PocketCAD 3D — Мобильный STL редактор</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #0b0e14; color: #f1f5f9; overflow: hidden; margin: 0; padding: 0; }
+    canvas { display: block; touch-action: none; }
+    .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
+    input[type="range"] { accent-color: #3b82f6; height: 6px; border-radius: 99px; }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col bg-[#0b0e14] text-slate-100 overflow-hidden">
+
+  <!-- ZEN / CLEAN VIEW RESTORE PILL -->
+  <button id="btnRestoreUI" class="hidden fixed top-4 right-4 z-50 bg-slate-900/85 backdrop-blur-xl hover:bg-slate-800 text-white border border-white/15 px-3.5 py-2 rounded-full shadow-2xl text-xs font-semibold flex items-center gap-1.5 transition active:scale-95">
+    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+    <span>Меню</span>
+  </button>
+
+  <!-- NATIVE ANDROID-STYLE APP BAR + STEPPER -->
+  <header id="mainHeader" class="bg-[#121620]/95 backdrop-blur-xl border-b border-white/10 shrink-0 z-30">
+    <div class="h-12 px-3 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2 min-w-0">
+        <div class="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-xs shrink-0 shadow-md shadow-blue-600/30">
+          3D
+        </div>
+        <div class="min-w-0 flex items-center gap-2">
+          <span class="text-sm font-bold text-white tracking-tight truncate">PocketCAD</span>
+          <span id="bboxValue" class="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full truncate">0×0×0 мм</span>
+        </div>
+      </div>
+
+      <!-- Compact Native Icon Actions + Undo -->
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button id="btnUndo" disabled class="bg-white/5 hover:bg-white/10 active:scale-95 disabled:opacity-35 disabled:pointer-events-none text-slate-200 border border-white/10 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition" title="Отменить последнее действие">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+          <span class="hidden sm:inline">Отмена</span>
+        </button>
+
+        <label for="stlFileInput" class="cursor-pointer bg-white/5 hover:bg-white/10 active:scale-95 text-slate-200 border border-white/10 px-2.5 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition" title="Импорт STL">
+          <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          <span class="hidden sm:inline">Импорт</span>
+        </label>
+        <input id="stlFileInput" type="file" accept=".stl" class="hidden">
+
+        <button id="btnOpenSamples" class="bg-white/5 hover:bg-white/10 active:scale-95 text-slate-200 border border-white/10 px-2.5 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition" title="Шаблоны деталей">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+          <span class="hidden md:inline">Шаблон</span>
+        </button>
+
+        <button id="btnToggleZen" class="bg-white/5 hover:bg-white/10 active:scale-95 text-slate-200 border border-white/10 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-medium flex items-center gap-1 transition" title="Скрыть весь интерфейс">
+          <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+          <span class="hidden md:inline">Скрыть</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Segmented Stepper Navigation -->
+    <div class="px-3 pb-2 pt-0.5 flex items-center justify-center">
+      <div class="grid grid-cols-4 gap-1 w-full max-w-xl bg-black/30 p-1 rounded-xl border border-white/5">
+        <button id="navStep1" class="nav-step-btn py-1.5 px-2 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 bg-blue-600 text-white transition">
+          <span>1. Плоскость</span>
+        </button>
+        <button id="navStep2" class="nav-step-btn py-1.5 px-2 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 text-slate-400 hover:text-white transition">
+          <span>2. Эскиз</span>
+        </button>
+        <button id="navStep3" class="nav-step-btn py-1.5 px-2 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 text-slate-400 hover:text-white transition">
+          <span>3. 3D / Грани</span>
+        </button>
+        <button id="navStep4" class="nav-step-btn py-1.5 px-2 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 text-emerald-400 hover:text-white transition">
+          <span>4. Экспорт</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <div class="flex-1 flex relative overflow-hidden">
+
+    <!-- 3D VIEWPORT -->
+    <div id="viewportContainer" class="flex-1 h-full w-full relative bg-gradient-to-b from-[#0e131f] via-[#090c14] to-black"></div>
+
+    <!-- DRAG / MOVE MODE BANNER (SHOWN WHEN OBJECT IS LOCKED FOR MOVING VIA DOUBLE-TAP OR LONG PRESS) -->
+    <div id="dragModeBanner" class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-30 bg-amber-500/95 backdrop-blur-xl text-slate-950 px-3.5 py-1.5 rounded-full shadow-2xl text-xs font-bold flex items-center gap-2 whitespace-nowrap">
+      <span class="w-2 h-2 rounded-full bg-slate-950 animate-ping"></span>
+      <span id="dragModeText">Перемещение: двигайте пальцем • 2× тап или удержание = поставить</span>
+      <button id="btnFinishDragMode" class="bg-slate-950 text-amber-300 px-2.5 py-0.5 rounded-full text-[11px] font-bold">Готово</button>
+    </div>
+
+    <!-- TOP FLOATING PILLS (COLLAPSED BY DEFAULT) -->
+    <div id="floatingTopControls" class="absolute top-3 left-3 right-3 z-20 flex items-start justify-between pointer-events-none">
+      <div class="flex flex-col gap-2 pointer-events-auto">
+        <div class="flex items-center gap-1.5">
+          <button id="btnToggleGridDrawer" class="bg-[#151a26]/85 backdrop-blur-xl hover:bg-slate-800 text-slate-200 border border-white/10 px-3 py-1.5 rounded-full text-[11px] font-semibold shadow-lg flex items-center gap-1.5 active:scale-95 transition">
+            <span class="text-blue-400">⊞</span>
+            <span>Сетка <span id="lblGridStepPill">1мм</span></span>
+          </button>
+          <button id="btnToggleCamDrawer" class="bg-[#151a26]/85 backdrop-blur-xl hover:bg-slate-800 text-slate-200 border border-white/10 px-3 py-1.5 rounded-full text-[11px] font-semibold shadow-lg flex items-center gap-1 active:scale-95 transition">
+            <span>🎥</span>
+            <span class="hidden sm:inline">Камера</span>
+          </button>
+        </div>
+
+        <!-- Grid Drawer -->
+        <div id="gridDrawer" class="hidden w-60 bg-[#151a26]/95 backdrop-blur-xl border border-white/15 rounded-2xl p-3 shadow-2xl space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-200">Сетка и привязка</span>
+            <button id="btnSnapToggle" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
+              Привязка: Вкл
+            </button>
+          </div>
+          <div class="grid grid-cols-4 gap-1">
+            <button data-step="0.5" class="grid-step-btn py-1.5 rounded-lg text-[11px] font-medium bg-white/5 text-slate-400">0.5</button>
+            <button data-step="1" class="grid-step-btn py-1.5 rounded-lg text-[11px] font-semibold bg-blue-600 text-white">1 мм</button>
+            <button data-step="5" class="grid-step-btn py-1.5 rounded-lg text-[11px] font-medium bg-white/5 text-slate-400">5 мм</button>
+            <button data-step="10" class="grid-step-btn py-1.5 rounded-lg text-[11px] font-medium bg-white/5 text-slate-400">10</button>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-white/10">
+            <span>Стол:</span>
+            <select id="selectBedSize" class="bg-slate-900 border border-white/15 rounded-lg px-2 py-1 text-slate-200 text-[11px]">
+              <option value="250" selected>250×250 (Kobra S1)</option>
+              <option value="220">220×220 мм</option>
+              <option value="300">300×300 мм</option>
+            </select>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span>Плоскости XY/XZ/YZ:</span>
+            <button id="btnTogglePlanesVis" class="text-[10px] px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">Показаны</button>
+          </div>
+        </div>
+
+        <!-- Camera Drawer -->
+        <div id="camDrawer" class="hidden w-52 bg-[#151a26]/95 backdrop-blur-xl border border-white/15 rounded-2xl p-2 shadow-2xl grid grid-cols-4 gap-1">
+          <button id="btnCamIso" class="py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-[11px] font-medium text-slate-200">Изо</button>
+          <button id="btnCamTop" class="py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-[11px] font-medium text-slate-200">Верх</button>
+          <button id="btnCamFront" class="py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-[11px] font-medium text-slate-200">Фронт</button>
+          <button id="btnCamSide" class="py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-[11px] font-medium text-slate-200">Бок</button>
+        </div>
+      </div>
+
+      <!-- Right Pill: Project Objects -->
+      <div class="flex flex-col items-end gap-2 pointer-events-auto">
+        <button id="btnToggleTreeDrawer" class="bg-[#151a26]/85 backdrop-blur-xl hover:bg-slate-800 text-slate-200 border border-white/10 px-3 py-1.5 rounded-full text-[11px] font-semibold shadow-lg flex items-center gap-1.5 active:scale-95 transition">
+          <span>☰</span>
+          <span>Объекты (<span id="treeCountBadge">0</span>)</span>
+        </button>
+
+        <div id="treeDrawer" class="hidden w-64 max-h-[50vh] flex flex-col bg-[#151a26]/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+          <div class="px-3 py-2.5 border-b border-white/10 flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-200">Эскизы и тела</span>
+            <button id="btnClearAll" class="text-[10px] text-rose-400 hover:text-rose-300 px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20">
+              Сбросить
+            </button>
+          </div>
+          <div id="objectTreeList" class="p-2 space-y-1.5 overflow-y-auto custom-scroll text-xs"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NATIVE ANDROID BOTTOM SHEET -->
+    <div id="bottomDockWrapper" class="absolute bottom-0 left-1/2 -translate-x-1/2 z-20 w-full max-w-2xl px-2 pb-2 transition-all">
+      <div id="bottomSheetCard" class="bg-[#141925]/95 backdrop-blur-xl border border-white/15 rounded-3xl shadow-2xl overflow-hidden">
+        <button id="btnCollapseBottomDock" class="w-full pt-2 pb-1.5 flex flex-col items-center justify-center gap-0.5 hover:bg-white/5 transition">
+          <span class="w-10 h-1 rounded-full bg-slate-600"></span>
+          <span id="lblCollapseDock" class="text-[10px] text-slate-400 font-medium">Свернуть</span>
+        </button>
+
+        <div id="bottomContextMenu" class="px-3 pb-3 pt-1">
+          
+          <!-- STEP 1: CHOOSE PLANE -->
+          <div id="panelStep1Planes" class="space-y-2">
+            <div class="text-[11px] font-medium text-slate-400 text-center">
+              Тапните на плоскость для эскиза • Удерживайте/2× тап на объекте чтобы двигать
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <button data-plane="XY" class="plane-select-btn py-2.5 px-2 rounded-2xl bg-blue-600/15 hover:bg-blue-600/30 active:scale-95 border border-blue-500/40 text-blue-200 flex flex-col items-center transition">
+                <span class="text-xs font-bold">XY (Стол)</span>
+                <span class="text-[10px] text-slate-400">Горизонт</span>
+              </button>
+              <button data-plane="XZ" class="plane-select-btn py-2.5 px-2 rounded-2xl bg-emerald-600/15 hover:bg-emerald-600/30 active:scale-95 border border-emerald-500/40 text-emerald-200 flex flex-col items-center transition">
+                <span class="text-xs font-bold">XZ (Фронт)</span>
+                <span class="text-[10px] text-slate-400">Спереди</span>
+              </button>
+              <button data-plane="YZ" class="plane-select-btn py-2.5 px-2 rounded-2xl bg-rose-600/15 hover:bg-rose-600/30 active:scale-95 border border-rose-500/40 text-rose-200 flex flex-col items-center transition">
+                <span class="text-xs font-bold">YZ (Бок)</span>
+                <span class="text-[10px] text-slate-400">Сбоку</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- STEP 3A: SKETCH SELECTED -->
+          <div id="panelSketchSelected" class="hidden space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold">Эскиз</span>
+                <span id="selectedSketchLabel" class="text-xs font-semibold text-white truncate">Эскиз #1</span>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button id="btnToggleDragSketch" class="px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-semibold">✋ Двигать</button>
+                <button id="btnEditSelectedSketch" class="px-2.5 py-1 rounded-xl bg-blue-600/20 text-blue-300 text-[11px] font-semibold">✎ 2D</button>
+                <button id="btnDeleteSelectedSketch" class="px-2 py-1 rounded-xl bg-rose-500/15 text-rose-300 text-[11px]">Удалить</button>
+                <button id="btnCloseSketchPanel" class="px-2 py-1 rounded-xl bg-white/5 text-slate-400 text-xs">✕</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div class="grid grid-cols-2 gap-1 bg-black/30 p-1 rounded-xl">
+                <button id="btnOpExtrudeAdd" class="py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-semibold">+ Выдавить</button>
+                <button id="btnOpExtrudeCut" class="py-1.5 rounded-lg text-slate-300 text-[11px] font-semibold">− Вырез</button>
+              </div>
+              <div class="grid grid-cols-3 gap-1 bg-black/30 p-1 rounded-xl">
+                <button data-dir="forward" class="ext-dir-btn py-1.5 rounded-lg bg-blue-600 text-white text-[10px] font-semibold">+ Вперёд</button>
+                <button data-dir="backward" class="ext-dir-btn py-1.5 rounded-lg text-slate-300 text-[10px] font-semibold">− Назад</button>
+                <button data-dir="both" class="ext-dir-btn py-1.5 rounded-lg text-slate-300 text-[10px] font-semibold">↔ Обе</button>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button id="btnExtrudeMinus" class="w-9 h-9 rounded-xl bg-white/5 border border-white/10 text-xs font-bold active:scale-95">−1</button>
+              <div class="flex-1 flex flex-col">
+                <div class="flex justify-between text-[11px] mb-0.5">
+                  <span class="text-slate-400">Глубина</span>
+                  <span id="lblExtrudeDist" class="font-mono font-bold text-blue-400">15 мм</span>
+                </div>
+                <input id="rngExtrudeDist" type="range" min="1" max="120" step="1" value="15" class="w-full">
+              </div>
+              <button id="btnExtrudePlus" class="w-9 h-9 rounded-xl bg-white/5 border border-white/10 text-xs font-bold active:scale-95">+1</button>
+              <button id="btnApplyExtrude" class="px-4 h-9 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-lg shadow-emerald-600/25">
+                Применить
+              </button>
+            </div>
+          </div>
+
+          <!-- STEP 3B: BODY / FACE SELECTED -->
+          <div id="panelBodySelected" class="hidden space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span id="selectedBodyLabel" class="text-xs font-bold text-white truncate">Деталь</span>
+                <span id="selectedFaceBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 truncate">
+                  Грань: Верх (+Z)
+                </span>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button id="btnToggleDragBody" class="px-2 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-semibold">✋ Двигать</button>
+                <button id="btnSketchOnSelectedFace" class="px-2 py-1 rounded-xl bg-blue-600 text-white text-[11px] font-semibold active:scale-95">
+                  + Эскиз
+                </button>
+                <button id="btnDeleteSelectedBody" class="px-2 py-1 rounded-xl bg-rose-500/15 text-rose-300 text-[11px]">Удалить</button>
+                <button id="btnCloseBodyPanel" class="px-2 py-1 rounded-xl bg-white/5 text-slate-400 text-xs">✕</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-1 bg-black/35 p-1 rounded-xl">
+              <button data-btab="edge" class="body-tab-btn py-1.5 rounded-lg text-[11px] font-semibold bg-blue-600 text-white">Кромки грани</button>
+              <button data-btab="draft" class="body-tab-btn py-1.5 rounded-lg text-[11px] font-semibold text-slate-400">Уклон и Высота</button>
+              <button data-btab="move" class="body-tab-btn py-1.5 rounded-lg text-[11px] font-semibold text-slate-400">Позиция</button>
+            </div>
+
+            <!-- Tab 1: Fillet / Chamfer -->
+            <div id="btabEdge" class="space-y-2">
+              <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-3 gap-1 bg-black/30 p-1 rounded-xl">
+                  <button data-edgemode="none" class="edge-mode-btn py-1 rounded-lg text-[10px] font-semibold bg-blue-600 text-white">Прямая</button>
+                  <button data-edgemode="fillet" class="edge-mode-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Скругл.</button>
+                  <button data-edgemode="chamfer" class="edge-mode-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Фаска</button>
+                </div>
+                <div class="grid grid-cols-3 gap-1 bg-black/30 p-1 rounded-xl">
+                  <button data-facetarget="top" class="face-target-btn py-1 rounded-lg text-[10px] font-semibold bg-emerald-600 text-white">Верх</button>
+                  <button data-facetarget="bottom" class="face-target-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Низ</button>
+                  <button data-facetarget="both" class="face-target-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Обе</button>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 bg-black/25 px-3 py-1.5 rounded-xl border border-white/5">
+                <span class="text-[11px] text-slate-400 shrink-0">Радиус / Фаска:</span>
+                <input id="rngEdgeAmount" type="range" min="0" max="8" step="0.5" value="0" class="flex-1">
+                <span id="valEdgeAmount" class="text-xs font-mono font-bold text-blue-400 w-12 text-right">0.0 мм</span>
+              </div>
+            </div>
+
+            <!-- Tab 2: Inward Draft & Depth -->
+            <div id="btabDraft" class="hidden space-y-2">
+              <div class="grid grid-cols-2 gap-2">
+                <div class="flex items-center gap-2 bg-black/25 px-2.5 py-1.5 rounded-xl border border-white/5">
+                  <span class="text-[11px] text-slate-400 shrink-0">Уклон:</span>
+                  <input id="rngDraftAngle" type="range" min="-20" max="20" step="1" value="0" class="flex-1">
+                  <span id="valDraftAngle" class="text-xs font-mono font-bold text-amber-400 w-9 text-right">0°</span>
+                </div>
+                <div class="flex items-center gap-2 bg-black/25 px-2.5 py-1.5 rounded-xl border border-white/5">
+                  <span class="text-[11px] text-slate-400 shrink-0">Высота:</span>
+                  <input id="rngBodyDepth" type="range" min="1" max="120" step="1" value="15" class="flex-1">
+                  <span id="valBodyDepth" class="text-xs font-mono font-bold text-emerald-400 w-11 text-right">15мм</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-2 text-[11px]">
+                <span class="text-slate-400">Направление:</span>
+                <div class="grid grid-cols-3 gap-1 bg-black/30 p-1 rounded-xl">
+                  <button data-bdir="forward" class="body-dir-btn px-2 py-1 rounded-lg text-[10px] font-semibold bg-blue-600 text-white">+ Вперёд</button>
+                  <button data-bdir="backward" class="body-dir-btn px-2 py-1 rounded-lg text-[10px] font-semibold text-slate-300">− Назад</button>
+                  <button data-bdir="both" class="body-dir-btn px-2 py-1 rounded-lg text-[10px] font-semibold text-slate-300">↔ Обе</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab 3: Position -->
+            <div id="btabMove" class="hidden flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] text-slate-400">X:</span>
+                <button data-axis="x" data-delta="-5" class="move-nudge-btn px-2.5 py-1.5 rounded-xl bg-white/5 text-xs font-mono border border-white/10">−5</button>
+                <button data-axis="x" data-delta="5" class="move-nudge-btn px-2.5 py-1.5 rounded-xl bg-white/5 text-xs font-mono border border-white/10">+5</button>
+                <span class="text-[11px] text-slate-400 ml-1">Y:</span>
+                <button data-axis="z" data-delta="5" class="move-nudge-btn px-2.5 py-1.5 rounded-xl bg-white/5 text-xs font-mono border border-white/10">−5</button>
+                <button data-axis="z" data-delta="-5" class="move-nudge-btn px-2.5 py-1.5 rounded-xl bg-white/5 text-xs font-mono border border-white/10">+5</button>
+              </div>
+              <button id="btnDropToBed" class="px-3 py-1.5 rounded-xl bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 text-xs font-semibold">
+                На стол (Z=0)
+              </button>
+            </div>
+          </div>
+
+          <!-- STEP 4: EXPORT -->
+          <div id="panelStep4Export" class="hidden flex items-center justify-between gap-2">
+            <div>
+              <div class="text-xs font-bold text-white">Готово к печати</div>
+              <div class="text-[10px] text-slate-400">Бинарный STL (мм, Z-вверх)</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="btnExportSTL" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-lg">
+                Скачать .STL
+              </button>
+              <button id="btnSharePrint" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold shadow-lg">
+                В печать
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- 2D SKETCH OVERLAY (STEP 2) -->
+    <div id="sketchOverlay" class="hidden absolute inset-0 z-30 bg-[#0b0e14] flex flex-col">
+      <div class="h-12 bg-[#121620] border-b border-white/10 px-3 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2">
+          <span id="sketchPlaneBadge" class="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-xs font-bold">XY</span>
+          <span id="sketchCoordReadout" class="font-mono text-[11px] text-emerald-400 bg-black/40 px-2 py-0.5 rounded-lg border border-white/10">
+            0.0, 0.0 мм
+          </span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button id="btnUndo2D" class="px-2.5 py-1.5 rounded-xl bg-white/5 text-amber-300 text-xs font-semibold border border-white/10">↶ Отмена</button>
+          <button id="btnCancelSketch" class="px-3 py-1.5 rounded-xl bg-white/5 text-slate-300 text-xs font-medium border border-white/10">Назад</button>
+          <button id="btnFinishSketch" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-lg">Готово → 3D</button>
+        </div>
+      </div>
+
+      <div class="flex-1 relative overflow-hidden flex">
+        <canvas id="sketchCanvas" class="flex-1 h-full w-full cursor-crosshair"></canvas>
+
+        <!-- 2D Drag Banner -->
+        <div id="sketchDragBanner" class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-40 bg-amber-500 text-slate-950 px-3 py-1 rounded-full text-xs font-bold shadow-xl">
+          Перемещение эскиза • 2× тап или удержание = поставить
+        </div>
+
+        <!-- Tool Selector -->
+        <div class="absolute top-3 left-1/2 -translate-x-1/2 bg-[#151a26]/95 backdrop-blur-xl border border-white/15 rounded-2xl p-1 shadow-2xl flex items-center gap-1 max-w-[96%] overflow-x-auto">
+          <button data-stool="rect" class="sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 text-white whitespace-nowrap">▭ Прямоуг.</button>
+          <button data-stool="circle" class="sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 whitespace-nowrap">◯ Круг</button>
+          <button data-stool="slot" class="sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 whitespace-nowrap">⬭ Паз</button>
+          <button data-stool="poly" class="sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 whitespace-nowrap">⬠ Ломаная</button>
+          <div class="h-4 w-px bg-white/10 mx-0.5"></div>
+          <button id="btnSketchZoomIn" class="px-2.5 py-1.5 rounded-xl bg-white/5 text-slate-200 text-xs font-bold">+</button>
+          <button id="btnSketchZoomOut" class="px-2.5 py-1.5 rounded-xl bg-white/5 text-slate-200 text-xs font-bold">−</button>
+        </div>
+
+        <!-- Bottom Touch Sheet -->
+        <div class="absolute bottom-3 left-1/2 -translate-x-1/2 w-[96%] max-w-xl bg-[#151a26]/95 backdrop-blur-xl border border-white/15 rounded-3xl p-3 shadow-2xl space-y-2">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div class="bg-black/40 rounded-xl p-1.5 border border-white/10 flex items-center justify-between">
+              <span class="text-[10px] text-slate-400">U:</span>
+              <input id="inpSketchU" type="number" step="1" value="0" class="w-11 bg-transparent text-xs font-mono text-white text-center focus:outline-none">
+              <div class="flex gap-0.5">
+                <button data-target="inpSketchU" data-step="-5" class="nudge-inp-btn px-1.5 py-0.5 bg-white/10 rounded text-[10px]">−5</button>
+                <button data-target="inpSketchU" data-step="5" class="nudge-inp-btn px-1.5 py-0.5 bg-white/10 rounded text-[10px]">+5</button>
+              </div>
+            </div>
+            <div class="bg-black/40 rounded-xl p-1.5 border border-white/10 flex items-center justify-between">
+              <span class="text-[10px] text-slate-400">V:</span>
+              <input id="inpSketchV" type="number" step="1" value="0" class="w-11 bg-transparent text-xs font-mono text-white text-center focus:outline-none">
+              <div class="flex gap-0.5">
+                <button data-target="inpSketchV" data-step="-5" class="nudge-inp-btn px-1.5 py-0.5 bg-white/10 rounded text-[10px]">−5</button>
+                <button data-target="inpSketchV" data-step="5" class="nudge-inp-btn px-1.5 py-0.5 bg-white/10 rounded text-[10px]">+5</button>
+              </div>
+            </div>
+            <div id="wrapDim1" class="bg-black/40 rounded-xl p-1.5 border border-white/10 flex items-center justify-between">
+              <span id="lblDim1" class="text-[10px] text-slate-400">W:</span>
+              <input id="inpSketchW" type="number" step="1" min="1" value="40" class="w-11 bg-transparent text-xs font-mono text-white text-center focus:outline-none">
+              <div class="flex gap-0.5">
+                <button data-target="inpSketchW" data-step="-2" class="nudge-inp-btn px-1.5 py-0.5 bg-white/10 rounded text-[10px]">−2</button>
+                <button data-target="inpSketchW" data-step="2" class="nudge-inp-btn px-1.5 py-0.5 bg-white/10 rounded text-[10px]">+2</button>
+              </div>
+            </div>
+            <div id="wrapDim2" class="bg-black/40 rounded-xl p-1.5 border border-white/10 flex items-center justify-between">
+              <span id="lblDim2" class="text-[10px] text-slate-400">H:</span>
+              <input id="inpSketchH" type="number" step="1" min="1" value="25" class="w-11 bg-transparent text-xs font-mono text-white text-center focus:outline-none">
+              <div class="flex gap-0.5">
+                <button data-target="inpSketchH" data-step="-2" class="nudge-inp-btn px-1.5 py-0.5 bg-white/10 rounded text-[10px]">−2</button>
+                <button data-target="inpSketchH" data-step="2" class="nudge-inp-btn px-1.5 py-0.5 bg-white/10 rounded text-[10px]">+2</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] text-slate-400">2× тап/удержание на фигуре — двигать • Потяните по сетке — рисовать</span>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button id="btnAddExactSketch" class="px-3.5 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-semibold">+ Добавить</button>
+              <button id="btnClosePoly" class="hidden px-3 py-1.5 rounded-xl bg-amber-600 text-white text-xs font-semibold">Замкнуть</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEMPLATES MODAL -->
+    <div id="samplesModal" class="hidden absolute inset-0 z-40 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-[#151a26] border border-white/15 rounded-3xl max-w-md w-full p-4 shadow-2xl space-y-3">
+        <div class="flex items-center justify-between border-b border-white/10 pb-2">
+          <h3 class="text-sm font-bold text-white">Шаблоны деталей</h3>
+          <button id="btnCloseSamples" class="text-slate-400 hover:text-white text-sm">✕</button>
+        </div>
+        <div class="space-y-2">
+          <button data-template="bracket" class="template-item-btn w-full text-left p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-white">Кронштейн (60×40×12 мм)</div>
+              <div class="text-[11px] text-slate-400">Фаска 1.5 мм сверху + 2 отверстия Ø6</div>
+            </div>
+            <span class="text-blue-400 text-xs font-semibold">Открыть</span>
+          </button>
+          <button data-template="enclosure" class="template-item-btn w-full text-left p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-white">Корпус датчика (55×38×22 мм)</div>
+              <div class="text-[11px] text-slate-400">Скругление + уклон грани 3°</div>
+            </div>
+            <span class="text-blue-400 text-xs font-semibold">Открыть</span>
+          </button>
+          <button data-template="spacer" class="template-item-btn w-full text-left p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-white">Втулка M8 (Ø22×Ø8.4×12 мм)</div>
+              <div class="text-[11px] text-slate-400">Фаска сверху + сквозное отверстие</div>
+            </div>
+            <span class="text-blue-400 text-xs font-semibold">Открыть</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NATIVE SNACKBAR TOAST -->
+    <div id="toastBox" class="hidden fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-[#1c2333]/95 backdrop-blur-xl border border-white/15 text-white px-4 py-2 rounded-full shadow-2xl text-xs font-medium flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+      <span id="toastMsg">Готово</span>
+    </div>
+
+  </div>
+
+  <script>
+    // =========================================================================
+    // STATE & UNDO HISTORY STACK
+    // =========================================================================
+    const state = {
+      mode: '3D',
+      navStep: 1,
+      zenMode: false,
+      bottomCollapsed: false,
+
+      activePlane: 'XY',
+      planeOffset: 0,
+      gridStep: 1,
+      snapEnabled: true,
+      bedSize: 250,
+      planesVisible: true,
+
+      sketchTool: 'rect',
+      sketchZoom: 3.2,
+      sketchPanX: 0,
+      sketchPanY: 0,
+      isDrawing: false,
+      drawStart: null,
+      drawCurrent: null,
+      polyPoints: [],
+
+      sketches: [],
+      bodies: [],
+
+      selectedSketchId: null,
+      selectedBodyId: null,
+      selectedFaceName: 'Верх (+Z)',
+      pendingExtrudeOp: 'add',
+      pendingExtrudeDir: 'forward',
+      editingSketchId: null,
+
+      // Interactive Drag/Move Mode (triggered via double-tap or long-press)
+      dragModeActive: false,
+      dragTargetType: null, // 'body' | 'sketch'
+      dragTargetId: null,
+      isActivelyDragging3D: false,
+      dragStartPlanePoint: null,
+      dragInitialShift: null,
+
+      // 2D Sketch Drag Mode
+      sketchDragActive: false,
+      sketchDragId: null,
+      isActivelyDragging2D: false,
+      sketchDragStartUV: null,
+      sketchDragInitialParams: null
+    };
+
+    const historyStack = [];
+    const MAX_HISTORY = 35;
+
+    function cloneProjectSnapshot() {
+      return {
+        sketches: state.sketches.map(s => ({
+          ...s,
+          params: s.params ? { ...s.params } : null,
+          points2D: s.points2D ? s.points2D.map(p => ({ ...p })) : null
+        })),
+        bodies: state.bodies.map(b => ({
+          ...b,
+          rawGeometry: b.rawGeometry || null, // preserve reference to BufferGeometry
+          computedGeometry: null
+        })),
+        selectedSketchId: state.selectedSketchId,
+        selectedBodyId: state.selectedBodyId
+      };
+    }
+
+    function pushHistory() {
+      historyStack.push(cloneProjectSnapshot());
+      if (historyStack.length > MAX_HISTORY) historyStack.shift();
+      updateUndoButtonUI();
+    }
+
+    function performUndo() {
+      if (historyStack.length === 0) return;
+      exitDragMode(false);
+      exitSketchDragMode(false);
+      const snap = historyStack.pop();
+      state.sketches = snap.sketches;
+      state.bodies = snap.bodies;
+      state.selectedSketchId = snap.selectedSketchId;
+      state.selectedBodyId = snap.selectedBodyId;
+      updateUndoButtonUI();
+      rebuildSketches3D();
+      rebuildBodies3D();
+      updateBottomContextPanel();
+      if (state.mode === 'SKETCH') drawSketchCanvas();
+      showToast('Последняя операция отменена');
+    }
+
+    function updateUndoButtonUI() {
+      const btn = document.getElementById('btnUndo');
+      const btn2D = document.getElementById('btnUndo2D');
+      btn.disabled = historyStack.length === 0;
+      if (btn2D) btn2D.disabled = historyStack.length === 0;
+    }
+
+    document.getElementById('btnUndo').addEventListener('click', performUndo);
+    document.getElementById('btnUndo2D').addEventListener('click', performUndo);
+
+    let nextId = 1;
+    function genId(prefix) { return `${prefix}_${nextId++}`; }
+
+    function showToast(message) {
+      const box = document.getElementById('toastBox');
+      document.getElementById('toastMsg').textContent = message;
+      box.classList.remove('hidden');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => box.classList.add('hidden'), 2400);
+    }
+
+    // =========================================================================
+    // ZEN MODE & COLLAPSIBLE UI
+    // =========================================================================
+    function setZenMode(enabled) {
+      state.zenMode = enabled;
+      document.getElementById('mainHeader').classList.toggle('hidden', enabled);
+      document.getElementById('floatingTopControls').classList.toggle('hidden', enabled);
+      document.getElementById('bottomDockWrapper').classList.toggle('hidden', enabled);
+      document.getElementById('btnRestoreUI').classList.toggle('hidden', !enabled);
+      setTimeout(() => {
+        camera.aspect = viewport.clientWidth / viewport.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+      }, 20);
+    }
+
+    document.getElementById('btnToggleZen').addEventListener('click', () => setZenMode(true));
+    document.getElementById('btnRestoreUI').addEventListener('click', () => setZenMode(false));
+
+    document.getElementById('btnCollapseBottomDock').addEventListener('click', () => {
+      state.bottomCollapsed = !state.bottomCollapsed;
+      document.getElementById('bottomContextMenu').classList.toggle('hidden', state.bottomCollapsed);
+      document.getElementById('lblCollapseDock').textContent = state.bottomCollapsed ? 'Открыть панель' : 'Свернуть';
+    });
+
+    function toggleTopDrawer(drawerId) {
+      const target = document.getElementById(drawerId);
+      const isHidden = target.classList.contains('hidden');
+      ['gridDrawer', 'camDrawer', 'treeDrawer'].forEach(id => {
+        if (id !== drawerId) document.getElementById(id).classList.add('hidden');
+      });
+      target.classList.toggle('hidden', !isHidden);
+    }
+
+    document.getElementById('btnToggleGridDrawer').addEventListener('click', () => toggleTopDrawer('gridDrawer'));
+    document.getElementById('btnToggleCamDrawer').addEventListener('click', () => toggleTopDrawer('camDrawer'));
+    document.getElementById('btnToggleTreeDrawer').addEventListener('click', () => toggleTopDrawer('treeDrawer'));
+
+    // =========================================================================
+    // STEPPER NAVIGATION
+    // =========================================================================
+    function updateStepperUI(activeStep) {
+      state.navStep = activeStep;
+      ['navStep1', 'navStep2', 'navStep3', 'navStep4'].forEach((id, idx) => {
+        const btn = document.getElementById(id);
+        const stepNum = idx + 1;
+        if (stepNum === activeStep) {
+          btn.className = stepNum === 4
+            ? 'nav-step-btn py-1.5 px-2 rounded-lg text-[11px] font-semibold flex items-center justify-center bg-emerald-600 text-white transition shadow'
+            : 'nav-step-btn py-1.5 px-2 rounded-lg text-[11px] font-semibold flex items-center justify-center bg-blue-600 text-white transition shadow';
+        } else {
+          btn.className = stepNum === 4
+            ? 'nav-step-btn py-1.5 px-2 rounded-lg text-[11px] font-semibold flex items-center justify-center text-emerald-400 hover:text-white transition'
+            : 'nav-step-btn py-1.5 px-2 rounded-lg text-[11px] font-semibold flex items-center justify-center text-slate-400 hover:text-white transition';
+        }
+      });
+    }
+
+    document.getElementById('navStep1').addEventListener('click', () => {
+      if (state.mode === 'SKETCH') closeSketcher();
+      clearSelection();
+      if (state.bottomCollapsed) document.getElementById('btnCollapseBottomDock').click();
+      updateStepperUI(1);
+    });
+    document.getElementById('navStep2').addEventListener('click', () => openSketcherOnPlane(state.activePlane || 'XY', state.planeOffset || 0));
+    document.getElementById('navStep3').addEventListener('click', () => {
+      if (state.mode === 'SKETCH') closeSketcher();
+      if (state.bottomCollapsed) document.getElementById('btnCollapseBottomDock').click();
+      if (!state.selectedBodyId && !state.selectedSketchId) {
+        if (state.bodies.length > 0) selectBody(state.bodies[0].id, 'Верх (+Z)', 'top');
+        else if (state.sketches.length > 0) selectSketch(state.sketches[0].id);
+        else showToast('Сначала создайте эскиз или загрузите STL');
+      }
+      updateStepperUI(3);
+    });
+    document.getElementById('navStep4').addEventListener('click', () => {
+      if (state.mode === 'SKETCH') closeSketcher();
+      if (state.bottomCollapsed) document.getElementById('btnCollapseBottomDock').click();
+      ['panelStep1Planes', 'panelSketchSelected', 'panelBodySelected'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      document.getElementById('panelStep4Export').classList.remove('hidden');
+      updateStepperUI(4);
+    });
+
+    // =========================================================================
+    // THREE.JS SCENE
+    // =========================================================================
+    const viewport = document.getElementById('viewportContainer');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, viewport.clientWidth / viewport.clientHeight, 0.5, 3000);
+    camera.position.set(170, 150, 190);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    viewport.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.target.set(0, 10, 0);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const dLight1 = new THREE.DirectionalLight(0xffffff, 0.75);
+    dLight1.position.set(180, 300, 200);
+    scene.add(dLight1);
+    const dLight2 = new THREE.DirectionalLight(0x93c5fd, 0.35);
+    dLight2.position.set(-180, -120, -160);
+    scene.add(dLight2);
+
+    const gridGroup = new THREE.Group();
+    const planesGroup = new THREE.Group();
+    const sketches3DGroup = new THREE.Group();
+    const bodies3DGroup = new THREE.Group();
+    const highlightGroup = new THREE.Group();
+    scene.add(gridGroup, planesGroup, sketches3DGroup, bodies3DGroup, highlightGroup);
+
+    function rebuildBedGrid() {
+      while (gridGroup.children.length) gridGroup.remove(gridGroup.children[0]);
+      const size = state.bedSize;
+      const grid10 = new THREE.GridHelper(size, Math.round(size / 10), 0x3b82f6, 0x1e293b);
+      grid10.position.y = -0.05;
+      gridGroup.add(grid10);
+
+      const borderPts = [
+        new THREE.Vector3(-size/2, 0, -size/2), new THREE.Vector3(size/2, 0, -size/2),
+        new THREE.Vector3(size/2, 0, size/2), new THREE.Vector3(-size/2, 0, size/2),
+        new THREE.Vector3(-size/2, 0, -size/2)
+      ];
+      gridGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(borderPts), new THREE.LineBasicMaterial({ color: 0x475569 })));
+
+      const axisLen = size / 2;
+      gridGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0.1,0), new THREE.Vector3(axisLen,0.1,0)]), new THREE.LineBasicMaterial({ color: 0xef4444 })));
+      gridGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0.1,0), new THREE.Vector3(0,0.1,-axisLen)]), new THREE.LineBasicMaterial({ color: 0x10b981 })));
+      gridGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,90,0)]), new THREE.LineBasicMaterial({ color: 0x3b82f6 })));
+    }
+
+    function buildReferencePlanes() {
+      while (planesGroup.children.length) planesGroup.remove(planesGroup.children[0]);
+      const pSize = 85;
+      [
+        { code: 'XY', color: 0x3b82f6, rot: [-Math.PI / 2, 0, 0], pos: [0, 0.1, 0] },
+        { code: 'XZ', color: 0x10b981, rot: [0, 0, 0],           pos: [0, pSize / 2, 0] },
+        { code: 'YZ', color: 0xf43f5e, rot: [0, Math.PI / 2, 0],  pos: [0, pSize / 2, 0] }
+      ].forEach(def => {
+        const geo = new THREE.PlaneGeometry(pSize, pSize);
+        const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false }));
+        mesh.rotation.set(...def.rot);
+        mesh.position.set(...def.pos);
+        mesh.userData = { isRefPlane: true, planeCode: def.code };
+        mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: def.color, transparent: true, opacity: 0.45 })));
+        planesGroup.add(mesh);
+      });
+    }
+
+    rebuildBedGrid();
+    buildReferencePlanes();
+
+    // =========================================================================
+    // COORDINATE MAPPING & GEOMETRY KERNEL
+    // =========================================================================
+    function planeUVNtoSceneVec3(plane, u, v, n) {
+      if (plane === 'XY') return new THREE.Vector3(u, n, -v);
+      if (plane === 'XZ') return new THREE.Vector3(u, v, -n);
+      return new THREE.Vector3(n, v, -u);
+    }
+
+    function orientExtrudedGeometryToPlane(geometry, plane, offset, depth, direction) {
+      let startN = offset;
+      if (direction === 'backward') startN = offset - depth;
+      else if (direction === 'both') startN = offset - depth / 2;
+
+      const pos = geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const mapped = planeUVNtoSceneVec3(plane, pos.getX(i), pos.getY(i), startN + pos.getZ(i));
+        pos.setXYZ(i, mapped.x, mapped.y, mapped.z);
+      }
+      pos.needsUpdate = true;
+      geometry.computeVertexNormals();
+      geometry.computeBoundingBox();
+    }
+
+    function generate2DPointsForSketch(sketch) {
+      const { shapeType, params } = sketch;
+      const pts = [];
+      if (shapeType === 'rect') {
+        const hw = params.w / 2, hh = params.h / 2;
+        pts.push(
+          { u: params.u - hw, v: params.v - hh },
+          { u: params.u + hw, v: params.v - hh },
+          { u: params.u + hw, v: params.v + hh },
+          { u: params.u - hw, v: params.v + hh }
+        );
+      } else if (shapeType === 'circle') {
+        const r = Math.max(0.5, params.w / 2);
+        for (let i = 0; i < 48; i++) {
+          const a = (i / 48) * Math.PI * 2;
+          pts.push({ u: params.u + Math.cos(a) * r, v: params.v + Math.sin(a) * r });
+        }
+      } else if (shapeType === 'slot') {
+        const totalL = Math.max(params.w, params.h);
+        const diam = Math.min(params.w, params.h);
+        const r = Math.max(0.5, diam / 2);
+        const straightHalf = Math.max(0, (totalL - diam) / 2);
+        for (let i = 0; i <= 20; i++) {
+          const a = -Math.PI / 2 + (i / 20) * Math.PI;
+          pts.push({ u: params.u + straightHalf + Math.cos(a) * r, v: params.v + Math.sin(a) * r });
+        }
+        for (let i = 0; i <= 20; i++) {
+          const a = Math.PI / 2 + (i / 20) * Math.PI;
+          pts.push({ u: params.u - straightHalf + Math.cos(a) * r, v: params.v + Math.sin(a) * r });
+        }
+      } else if (shapeType === 'poly' && Array.isArray(sketch.points2D)) {
+        return sketch.points2D.map(p => ({ u: p.u, v: p.v }));
+      }
+      return pts;
+    }
+
+    function inset2DPolygon(pts, amount) {
+      if (amount <= 0 || pts.length < 3) return pts;
+      let cx = 0, cy = 0;
+      pts.forEach(p => { cx += p.u; cy += p.v; });
+      cx /= pts.length; cy /= pts.length;
+
+      return pts.map((p, idx) => {
+        const prev = pts[(idx - 1 + pts.length) % pts.length];
+        const next = pts[(idx + 1) % pts.length];
+        const e1x = p.u - prev.u, e1y = p.v - prev.v;
+        const e2x = next.u - p.u, e2y = next.v - p.v;
+        const l1 = Math.hypot(e1x, e1y) || 1;
+        const l2 = Math.hypot(e2x, e2y) || 1;
+        const n1x = -e1y / l1, n1y = e1x / l1;
+        const n2x = -e2y / l2, n2y = e2x / l2;
+        let bx = n1x + n2x, by = n1y + n2y;
+        const bl = Math.hypot(bx, by);
+        if (bl < 0.001) {
+          const dx = cx - p.u, dy = cy - p.v, dl = Math.hypot(dx, dy) || 1;
+          return { u: p.u + (dx / dl) * amount, v: p.v + (dy / dl) * amount };
+        }
+        bx /= bl; by /= bl;
+        if (bx * (cx - p.u) + by * (cy - p.v) < 0) { bx = -bx; by = -by; }
+        const cosHalf = Math.max(0.45, n1x * bx + n1y * by);
+        const shift = Math.min(amount / cosHalf, Math.hypot(cx - p.u, cy - p.v) * 0.8);
+        return { u: p.u + bx * shift, v: p.v + by * shift };
+      });
+    }
+
+    function rebuildSketches3D() {
+      while (sketches3DGroup.children.length) sketches3DGroup.remove(sketches3DGroup.children[0]);
+      state.sketches.forEach(sk => {
+        const pts2d = generate2DPointsForSketch(sk);
+        if (pts2d.length < 3) return;
+        const pts3d = pts2d.map(p => planeUVNtoSceneVec3(sk.plane, p.u, p.v, sk.offset + 0.15));
+        pts3d.push(pts3d[0].clone());
+
+        const isDraggingThis = state.dragModeActive && state.dragTargetType === 'sketch' && state.dragTargetId === sk.id;
+        const isSel = sk.id === state.selectedSketchId;
+        const color = isDraggingThis ? 0xf59e0b : (isSel ? 0xfbbf24 : 0x38bdf8);
+        sketches3DGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts3d), new THREE.LineBasicMaterial({ color })));
+
+        const shape = new THREE.Shape(pts2d.map(p => new THREE.Vector2(p.u, p.v)));
+        const fillGeo = new THREE.ShapeGeometry(shape);
+        orientExtrudedGeometryToPlane(fillGeo, sk.plane, sk.offset + 0.12, 0, 'forward');
+        const fillMesh = new THREE.Mesh(fillGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: isDraggingThis ? 0.5 : (isSel ? 0.35 : 0.12), side: THREE.DoubleSide }));
+        fillMesh.userData = { isSketch3D: true, sketchId: sk.id };
+        sketches3DGroup.add(fillMesh);
+      });
+    }
+
+    function buildBodyGeometry(body) {
+      if (body.type === 'imported' && body.rawGeometry) {
+        const geom = body.rawGeometry.clone();
+        if (body.draftAngle !== 0 || body.edgeAmount > 0) applyInwardModifiersToImportedMesh(geom, body);
+        if (body.shiftX || body.shiftY || body.shiftZ) geom.translate(body.shiftX || 0, body.shiftY || 0, body.shiftZ || 0);
+        geom.computeVertexNormals();
+        geom.computeBoundingBox();
+        return geom;
+      }
+
+      const sketch = state.sketches.find(s => s.id === body.sketchId);
+      if (!sketch) return new THREE.BoxGeometry(10, 10, 10);
+      const rawPts2d = generate2DPointsForSketch(sketch);
+      if (rawPts2d.length < 3) return new THREE.BoxGeometry(10, 10, 10);
+
+      const depth = Math.max(0.5, Number(body.depth) || 10);
+      const edgeMode = body.edgeMode || 'none';
+      const faceTarget = body.faceTarget || 'top';
+      const edgeAmt = edgeMode !== 'none' ? Math.min(Math.max(0, Number(body.edgeAmount) || 0), depth * 0.42) : 0;
+      const bevelEnabled = edgeAmt > 0.05;
+
+      const insetPts2d = bevelEnabled ? inset2DPolygon(rawPts2d, edgeAmt) : rawPts2d;
+      const outerShape = new THREE.Shape(insetPts2d.map(p => new THREE.Vector2(p.u, p.v)));
+
+      if (body.operation === 'add') {
+        state.bodies.filter(b => b.operation === 'cut' && b.plane === body.plane).forEach(cutB => {
+          const cutSk = state.sketches.find(s => s.id === cutB.sketchId);
+          if (cutSk) {
+            const holePts = generate2DPointsForSketch(cutSk);
+            if (holePts.length >= 3) outerShape.holes.push(new THREE.Path(holePts.reverse().map(p => new THREE.Vector2(p.u, p.v))));
+          }
+        });
+      }
+
+      const effectiveDepth = Math.max(0.5, depth - (bevelEnabled ? edgeAmt * 2 : 0));
+      const geom = new THREE.ExtrudeGeometry(outerShape, {
+        steps: 10,
+        depth: effectiveDepth,
+        bevelEnabled,
+        bevelThickness: bevelEnabled ? edgeAmt : 0,
+        bevelSize: bevelEnabled ? edgeAmt : 0,
+        bevelSegments: edgeMode === 'fillet' ? 6 : 1
+      });
+
+      if (bevelEnabled) {
+        geom.translate(0, 0, edgeAmt);
+        if (faceTarget !== 'both') {
+          geom.computeBoundingBox();
+          const bb = geom.boundingBox;
+          const cU = (bb.min.x + bb.max.x) / 2, cV = (bb.min.y + bb.max.y) / 2;
+          const maxR = Math.max((bb.max.x - bb.min.x) / 2, (bb.max.y - bb.min.y) / 2);
+          const pos = geom.attributes.position;
+
+          for (let i = 0; i < pos.count; i++) {
+            const z = pos.getZ(i);
+            const inBottomBevel = z < edgeAmt - 0.001;
+            const inTopBevel = z > depth - edgeAmt + 0.001;
+            if ((faceTarget === 'top' && inBottomBevel) || (faceTarget === 'bottom' && inTopBevel)) {
+              const dx = pos.getX(i) - cU, dy = pos.getY(i) - cV, r = Math.hypot(dx, dy);
+              if (r > maxR * 0.25) {
+                const t = faceTarget === 'top' ? (edgeAmt - z) / edgeAmt : (z - (depth - edgeAmt)) / edgeAmt;
+                const addR = Math.max(0, edgeAmt * t);
+                pos.setX(i, cU + dx * ((r + addR) / r));
+                pos.setY(i, cV + dy * ((r + addR) / r));
+              }
+            }
+          }
+          pos.needsUpdate = true;
+        }
+      }
+
+      const draftDeg = Number(body.draftAngle) || 0;
+      if (Math.abs(draftDeg) > 0.01) {
+        geom.computeBoundingBox();
+        const bb = geom.boundingBox;
+        const cU = (bb.min.x + bb.max.x) / 2, cV = (bb.min.y + bb.max.y) / 2;
+        const tanA = Math.tan((Math.abs(draftDeg) * Math.PI) / 180);
+        const pos = geom.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const dx = pos.getX(i) - cU, dy = pos.getY(i) - cV, z = pos.getZ(i);
+          const dist = Math.hypot(dx, dy);
+          if (dist > 0.001) {
+            const taperZ = draftDeg > 0 ? z : (depth - z);
+            const newDist = Math.max(0.5, dist - taperZ * tanA);
+            const sc = newDist / dist;
+            pos.setX(i, cU + dx * sc);
+            pos.setY(i, cV + dy * sc);
+          }
+        }
+        pos.needsUpdate = true;
+      }
+
+      orientExtrudedGeometryToPlane(geom, body.plane, body.offset, depth, body.direction || 'forward');
+      if (body.shiftX || body.shiftY || body.shiftZ) {
+        geom.translate(body.shiftX || 0, body.shiftY || 0, body.shiftZ || 0);
+        geom.computeBoundingBox();
+      }
+      return geom;
+    }
+
+    function applyInwardModifiersToImportedMesh(geom, body) {
+      geom.computeBoundingBox();
+      const bb = geom.boundingBox;
+      const cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2;
+      const minY = bb.min.y, maxY = bb.max.y;
+      const tanDraft = Math.tan((Math.abs(body.draftAngle) * Math.PI) / 180);
+      const edgeAmt = body.edgeMode !== 'none' ? body.edgeAmount : 0;
+      const faceTarget = body.faceTarget || 'top';
+
+      const pos = geom.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+        const dx = x - cx, dz = z - cz, r = Math.hypot(dx, dz);
+        if (r > 0.001) {
+          let shrink = 0;
+          if (Math.abs(body.draftAngle) > 0.01) {
+            const taperH = body.draftAngle > 0 ? (y - minY) : (maxY - y);
+            shrink += taperH * tanDraft;
+          }
+          if (edgeAmt > 0) {
+            if ((faceTarget === 'top' || faceTarget === 'both') && maxY - y < edgeAmt) {
+              const t = (edgeAmt - (maxY - y)) / edgeAmt;
+              shrink += body.edgeMode === 'chamfer' ? t * edgeAmt : (1 - Math.sqrt(Math.max(0, 1 - t * t))) * edgeAmt;
+            }
+            if ((faceTarget === 'bottom' || faceTarget === 'both') && y - minY < edgeAmt) {
+              const t = (edgeAmt - (y - minY)) / edgeAmt;
+              shrink += body.edgeMode === 'chamfer' ? t * edgeAmt : (1 - Math.sqrt(Math.max(0, 1 - t * t))) * edgeAmt;
+            }
+          }
+          const sc = Math.max(0.1, (r - shrink) / r);
+          pos.setX(i, cx + dx * sc);
+          pos.setZ(i, cz + dz * sc);
+        }
+      }
+      pos.needsUpdate = true;
+    }
+
+    function rebuildBodies3D() {
+      while (bodies3DGroup.children.length) bodies3DGroup.remove(bodies3DGroup.children[0]);
+      state.bodies.forEach(body => {
+        const geom = buildBodyGeometry(body);
+        body.computedGeometry = geom;
+        const isDraggingThis = state.dragModeActive && state.dragTargetType === 'body' && state.dragTargetId === body.id;
+        const isSel = body.id === state.selectedBodyId;
+        const mat = body.operation === 'cut'
+          ? new THREE.MeshStandardMaterial({ color: 0xf43f5e, transparent: true, opacity: isSel ? 0.45 : 0.18 })
+          : new THREE.MeshStandardMaterial({
+              color: isDraggingThis ? 0xf59e0b : (isSel ? 0x60a5fa : 0x3b82f6),
+              roughness: 0.35, metalness: 0.15, polygonOffset: true, polygonOffsetFactor: 1
+            });
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.userData = { isBody3D: true, bodyId: body.id };
+        mesh.add(new THREE.LineSegments(
+          new THREE.EdgesGeometry(geom, 20),
+          new THREE.LineBasicMaterial({ color: isDraggingThis ? 0xfef08a : (isSel ? 0xfbbf24 : (body.operation === 'cut' ? 0xfb7185 : 0x1e293b)) })
+        ));
+        bodies3DGroup.add(mesh);
+      });
+      updateBoundingBoxReadout();
+      renderObjectTree();
+    }
+
+    function updateBoundingBoxReadout() {
+      const addBodies = state.bodies.filter(b => b.operation === 'add' && b.computedGeometry);
+      const el = document.getElementById('bboxValue');
+      if (addBodies.length === 0) { el.textContent = '0×0×0 мм'; return; }
+      const box = new THREE.Box3();
+      addBodies.forEach(b => { b.computedGeometry.computeBoundingBox(); box.union(b.computedGeometry.boundingBox); });
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      el.textContent = `${size.x.toFixed(1)}×${size.z.toFixed(1)}×${size.y.toFixed(1)} мм`;
+    }
+
+    function renderObjectTree() {
+      document.getElementById('treeCountBadge').textContent = state.sketches.length + state.bodies.length;
+      const container = document.getElementById('objectTreeList');
+      container.innerHTML = '';
+      if (state.sketches.length === 0 && state.bodies.length === 0) {
+        container.innerHTML = `<div class="text-slate-500 text-[11px] py-3 text-center">Список пуст</div>`;
+        return;
+      }
+      state.sketches.forEach(sk => {
+        const isSel = sk.id === state.selectedSketchId;
+        const row = document.createElement('div');
+        row.className = `flex items-center justify-between px-2.5 py-1.5 rounded-xl cursor-pointer border ${isSel ? 'bg-amber-500/20 border-amber-500/50 text-amber-200' : 'bg-white/5 border-white/10 text-slate-300'}`;
+        row.innerHTML = `<span class="truncate">✎ ${sk.name} (${sk.plane})</span><span class="text-[10px] text-amber-300">3D→</span>`;
+        row.addEventListener('click', () => { selectSketch(sk.id); document.getElementById('treeDrawer').classList.add('hidden'); });
+        container.appendChild(row);
+      });
+      state.bodies.forEach(b => {
+        const isSel = b.id === state.selectedBodyId;
+        const row = document.createElement('div');
+        row.className = `flex items-center justify-between px-2.5 py-1.5 rounded-xl cursor-pointer border ${isSel ? 'bg-blue-600/25 border-blue-500 text-white' : 'bg-white/5 border-white/10 text-slate-200'}`;
+        row.innerHTML = `<span class="truncate">${b.operation === 'cut' ? '⊖' : '⬢'} ${b.name}</span><span class="text-[10px] text-blue-300">${b.operation === 'cut' ? 'Вырез' : `${b.depth}мм`}</span>`;
+        row.addEventListener('click', () => { selectBody(b.id, 'Верх (+Z)', 'top'); document.getElementById('treeDrawer').classList.add('hidden'); });
+        container.appendChild(row);
+      });
+    }
+
+    function updateBottomContextPanel() {
+      ['panelStep1Planes', 'panelSketchSelected', 'panelBodySelected', 'panelStep4Export'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+
+      if (state.selectedSketchId) {
+        const sk = state.sketches.find(s => s.id === state.selectedSketchId);
+        if (sk) {
+          document.getElementById('panelSketchSelected').classList.remove('hidden');
+          document.getElementById('selectedSketchLabel').textContent = `${sk.name} (${sk.plane})`;
+          updateStepperUI(3);
+          return;
+        }
+      }
+
+      if (state.selectedBodyId) {
+        const b = state.bodies.find(x => x.id === state.selectedBodyId);
+        if (b) {
+          document.getElementById('panelBodySelected').classList.remove('hidden');
+          document.getElementById('selectedBodyLabel').textContent = b.name;
+          document.getElementById('selectedFaceBadge').textContent = `Грань: ${state.selectedFaceName}`;
+
+          document.querySelectorAll('.edge-mode-btn').forEach(btn => {
+            const act = btn.dataset.edgemode === (b.edgeMode || 'none');
+            btn.className = `edge-mode-btn py-1 rounded-lg text-[10px] font-semibold ${act ? 'bg-blue-600 text-white' : 'text-slate-300'}`;
+          });
+          document.querySelectorAll('.face-target-btn').forEach(btn => {
+            const act = btn.dataset.facetarget === (b.faceTarget || 'top');
+            btn.className = `face-target-btn py-1 rounded-lg text-[10px] font-semibold ${act ? 'bg-emerald-600 text-white' : 'text-slate-300'}`;
+          });
+          document.querySelectorAll('.body-dir-btn').forEach(btn => {
+            const act = btn.dataset.bdir === (b.direction || 'forward');
+            btn.className = `body-dir-btn px-2 py-1 rounded-lg text-[10px] font-semibold ${act ? 'bg-blue-600 text-white' : 'text-slate-300'}`;
+          });
+
+          document.getElementById('rngEdgeAmount').value = b.edgeAmount || 0;
+          document.getElementById('valEdgeAmount').textContent = `${Number(b.edgeAmount || 0).toFixed(1)} мм`;
+          document.getElementById('rngDraftAngle').value = b.draftAngle || 0;
+          document.getElementById('valDraftAngle').textContent = `${b.draftAngle || 0}°`;
+          document.getElementById('rngBodyDepth').value = b.depth || 15;
+          document.getElementById('valBodyDepth').textContent = `${b.depth || 15}мм`;
+          updateStepperUI(3);
+          return;
+        }
+      }
+
+      document.getElementById('panelStep1Planes').classList.remove('hidden');
+      updateStepperUI(1);
+    }
+
+    function selectSketch(id) {
+      state.selectedSketchId = id;
+      state.selectedBodyId = null;
+      if (state.bottomCollapsed) document.getElementById('btnCollapseBottomDock').click();
+      rebuildSketches3D();
+      rebuildBodies3D();
+      updateBottomContextPanel();
+    }
+
+    function selectBody(id, faceLabel, autoFaceTarget = null) {
+      state.selectedBodyId = id;
+      state.selectedSketchId = null;
+      if (faceLabel) state.selectedFaceName = faceLabel;
+      const b = state.bodies.find(x => x.id === id);
+      if (b && autoFaceTarget) b.faceTarget = autoFaceTarget;
+      if (state.bottomCollapsed) document.getElementById('btnCollapseBottomDock').click();
+      rebuildSketches3D();
+      rebuildBodies3D();
+      updateBottomContextPanel();
+    }
+
+    function clearSelection() {
+      state.selectedSketchId = null;
+      state.selectedBodyId = null;
+      while (highlightGroup.children.length) highlightGroup.remove(highlightGroup.children[0]);
+      rebuildSketches3D();
+      rebuildBodies3D();
+      updateBottomContextPanel();
+    }
+
+    // =========================================================================
+    // 3D DRAG & MOVE MODE (DOUBLE-TAP OR LONG-PRESS TO LOCK/UNLOCK OBJECT)
+    // =========================================================================
+    const bedDragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+    function enterDragMode(targetType, targetId) {
+      pushHistory();
+      state.dragModeActive = true;
+      state.dragTargetType = targetType;
+      state.dragTargetId = targetId;
+      controls.enabled = false; // Lock camera rotation while moving object
+      document.getElementById('dragModeBanner').classList.remove('hidden');
+      rebuildSketches3D();
+      rebuildBodies3D();
+      showToast('Объект выделен для перемещения! Водите пальцем.');
+    }
+
+    function exitDragMode(showConfirmToast = true) {
+      if (!state.dragModeActive) return;
+      state.dragModeActive = false;
+      state.dragTargetType = null;
+      state.dragTargetId = null;
+      state.isActivelyDragging3D = false;
+      controls.enabled = true;
+      document.getElementById('dragModeBanner').classList.add('hidden');
+      rebuildSketches3D();
+      rebuildBodies3D();
+      if (showConfirmToast) showToast('Объект зафиксирован на месте');
+    }
+
+    document.getElementById('btnFinishDragMode').addEventListener('click', () => exitDragMode(true));
+    document.getElementById('btnToggleDragBody').addEventListener('click', () => {
+      if (!state.selectedBodyId) return;
+      if (state.dragModeActive) exitDragMode(true);
+      else enterDragMode('body', state.selectedBodyId);
+    });
+    document.getElementById('btnToggleDragSketch').addEventListener('click', () => {
+      if (!state.selectedSketchId) return;
+      if (state.dragModeActive) exitDragMode(true);
+      else enterDragMode('sketch', state.selectedSketchId);
+    });
+
+    function getHitBedPoint(e) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointerNDC, camera);
+      const pt = new THREE.Vector3();
+      raycaster.ray.intersectPlane(bedDragPlane, pt);
+      return pt;
+    }
+
+    function showFaceHighlightIndicator(point, normal) {
+      while (highlightGroup.children.length) highlightGroup.remove(highlightGroup.children[0]);
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(2.5, 4.5, 24),
+        new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide, depthTest: false })
+      );
+      ring.position.copy(point).addScaledVector(normal, 0.25);
+      ring.lookAt(point.clone().add(normal));
+      highlightGroup.add(ring);
+    }
+
+    // Raycasting + Long-Press + Double-Tap detection in 3D Viewport
+    const raycaster = new THREE.Raycaster();
+    const pointerNDC = new THREE.Vector2();
+    let pointerDownPos3D = { x: 0, y: 0 };
+    let longPressTimer3D = null;
+    let longPressTriggered3D = false;
+    let lastTapTime3D = 0;
+    let lastTapTargetKey3D = '';
+
+    function pick3DObjectAtPointer(e) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointerNDC, camera);
+
+      const bodyHits = raycaster.intersectObjects(bodies3DGroup.children, false);
+      if (bodyHits.length > 0) return { type: 'body', hit: bodyHits[0], id: bodyHits[0].object.userData.bodyId };
+
+      const sketchHit = raycaster.intersectObjects(sketches3DGroup.children, false).find(h => h.object.userData && h.object.userData.isSketch3D);
+      if (sketchHit) return { type: 'sketch', hit: sketchHit, id: sketchHit.object.userData.sketchId };
+
+      return null;
+    }
+
+    renderer.domElement.addEventListener('pointerdown', e => {
+      pointerDownPos3D = { x: e.clientX, y: e.clientY };
+      longPressTriggered3D = false;
+
+      if (state.dragModeActive) {
+        state.isActivelyDragging3D = true;
+        state.dragStartPlanePoint = getHitBedPoint(e);
+        if (state.dragTargetType === 'body') {
+          const b = state.bodies.find(x => x.id === state.dragTargetId);
+          state.dragInitialShift = b ? { x: b.shiftX || 0, z: b.shiftZ || 0 } : { x: 0, z: 0 };
+        } else if (state.dragTargetType === 'sketch') {
+          const sk = state.sketches.find(s => s.id === state.dragTargetId);
+          state.dragInitialShift = sk && sk.params ? { u: sk.params.u, v: sk.params.v } : { u: 0, v: 0 };
+        }
+      }
+
+      // Start Long-Press Timer (480 ms)
+      clearTimeout(longPressTimer3D);
+      longPressTimer3D = setTimeout(() => {
+        longPressTriggered3D = true;
+        if (state.dragModeActive) {
+          exitDragMode(true);
+        } else {
+          const picked = pick3DObjectAtPointer(e);
+          if (picked) {
+            if (picked.type === 'body') selectBody(picked.id, 'Перемещение', null);
+            else selectSketch(picked.id);
+            enterDragMode(picked.type, picked.id);
+          }
+        }
+      }, 480);
+    });
+
+    renderer.domElement.addEventListener('pointermove', e => {
+      if (Math.hypot(e.clientX - pointerDownPos3D.x, e.clientY - pointerDownPos3D.y) > 8) {
+        clearTimeout(longPressTimer3D);
+      }
+      if (!state.dragModeActive || !state.isActivelyDragging3D) return;
+      const pt = getHitBedPoint(e);
+      if (!pt || !state.dragStartPlanePoint) return;
+
+      let dx = pt.x - state.dragStartPlanePoint.x;
+      let dz = pt.z - state.dragStartPlanePoint.z;
+      if (state.snapEnabled) {
+        const st = state.gridStep;
+        dx = Math.round(dx / st) * st;
+        dz = Math.round(dz / st) * st;
+      }
+
+      if (state.dragTargetType === 'body') {
+        const b = state.bodies.find(x => x.id === state.dragTargetId);
+        if (b && state.dragInitialShift) {
+          b.shiftX = state.dragInitialShift.x + dx;
+          b.shiftZ = state.dragInitialShift.z + dz;
+          rebuildBodies3D();
+        }
+      } else if (state.dragTargetType === 'sketch') {
+        const sk = state.sketches.find(s => s.id === state.dragTargetId);
+        if (sk && sk.params && state.dragInitialShift) {
+          sk.params.u = state.dragInitialShift.u + dx;
+          sk.params.v = state.dragInitialShift.v - dz;
+          rebuildSketches3D();
+          rebuildBodies3D();
+        }
+      }
+    });
+
+    renderer.domElement.addEventListener('pointerup', e => {
+      clearTimeout(longPressTimer3D);
+      state.isActivelyDragging3D = false;
+
+      if (longPressTriggered3D) return; // Long-press already handled action
+      if (Math.hypot(e.clientX - pointerDownPos3D.x, e.clientY - pointerDownPos3D.y) > 8) return;
+
+      const now = Date.now();
+      const picked = pick3DObjectAtPointer(e);
+      const tapKey = picked ? `${picked.type}:${picked.id}` : 'empty';
+      const isDoubleTap = (now - lastTapTime3D < 320) && (tapKey === lastTapTargetKey3D || state.dragModeActive);
+      lastTapTime3D = now;
+      lastTapTargetKey3D = tapKey;
+
+      // Double-tap toggles Drag Mode on/off
+      if (isDoubleTap) {
+        if (state.dragModeActive) {
+          exitDragMode(true);
+          return;
+        } else if (picked) {
+          if (picked.type === 'body') selectBody(picked.id, 'Перемещение', null);
+          else selectSketch(picked.id);
+          enterDragMode(picked.type, picked.id);
+          return;
+        }
+      }
+
+      if (state.dragModeActive) return;
+
+      // Normal Single Tap: select face/body, sketch, or plane
+      if (picked && picked.type === 'body') {
+        const hit = picked.hit;
+        const normal = hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld).normalize() : new THREE.Vector3(0, 1, 0);
+        let faceLabel = 'Верх (+Z)', facePlane = 'XY', faceOffset = hit.point.y, autoTarget = null;
+        if (Math.abs(normal.y) > 0.7) {
+          faceLabel = normal.y > 0 ? 'Верх (+Z)' : 'Низ (-Z)';
+          facePlane = 'XY'; faceOffset = hit.point.y;
+          autoTarget = normal.y > 0 ? 'top' : 'bottom';
+        } else if (Math.abs(normal.z) > 0.7) {
+          faceLabel = normal.z > 0 ? 'Передняя (-Y)' : 'Задняя (+Y)';
+          facePlane = 'XZ'; faceOffset = -hit.point.z;
+        } else if (Math.abs(normal.x) > 0.7) {
+          faceLabel = normal.x > 0 ? 'Правая (+X)' : 'Левая (-X)';
+          facePlane = 'YZ'; faceOffset = hit.point.x;
+        } else {
+          faceLabel = 'Боковая грань';
+        }
+        state.lastPickedFacePlane = facePlane;
+        state.lastPickedFaceOffset = Math.round(faceOffset * 2) / 2;
+        showFaceHighlightIndicator(hit.point, normal);
+        selectBody(picked.id, faceLabel, autoTarget);
+        return;
+      }
+
+      if (picked && picked.type === 'sketch') {
+        selectSketch(picked.id);
+        return;
+      }
+
+      if (state.planesVisible) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(pointerNDC, camera);
+        const planeHits = raycaster.intersectObjects(planesGroup.children, false);
+        if (planeHits.length > 0) { openSketcherOnPlane(planeHits[0].object.userData.planeCode, 0); return; }
+      }
+      clearSelection();
+    });
+
+    // =========================================================================
+    // 2D SKETCHER + DOUBLE-TAP / LONG-PRESS DRAG FOR 2D FIGURES
+    // =========================================================================
+    const sketchOverlay = document.getElementById('sketchOverlay');
+    const sketchCanvas = document.getElementById('sketchCanvas');
+    const sctx = sketchCanvas.getContext('2d');
+
+    function enterSketchDragMode(skId) {
+      pushHistory();
+      state.sketchDragActive = true;
+      state.sketchDragId = skId;
+      state.selectedSketchId = skId;
+      state.editingSketchId = skId;
+      document.getElementById('sketchDragBanner').classList.remove('hidden');
+      drawSketchCanvas();
+    }
+
+    function exitSketchDragMode(showMsg = true) {
+      if (!state.sketchDragActive) return;
+      state.sketchDragActive = false;
+      state.sketchDragId = null;
+      state.isActivelyDragging2D = false;
+      document.getElementById('sketchDragBanner').classList.add('hidden');
+      drawSketchCanvas();
+      if (showMsg) showToast('Фигура установлена на место');
+    }
+
+    function pointInPolygon2D(u, v, pts) {
+      let inside = false;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const xi = pts[i].u, yi = pts[i].v;
+        const xj = pts[j].u, yj = pts[j].v;
+        const intersect = ((yi > v) !== (yj > v)) && (u < (xj - xi) * (v - yi) / (yj - yi + 1e-9) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function find2DSketchAtUV(u, v) {
+      const samePlane = state.sketches.filter(s => s.plane === state.activePlane);
+      for (let i = samePlane.length - 1; i >= 0; i--) {
+        const pts = generate2DPointsForSketch(samePlane[i]);
+        if (pts.length >= 3 && pointInPolygon2D(u, v, pts)) return samePlane[i];
+      }
+      return null;
+    }
+
+    function openSketcherOnPlane(planeCode, offsetMm = 0, editSketchId = null) {
+      exitDragMode(false);
+      state.mode = 'SKETCH';
+      state.activePlane = planeCode;
+      state.planeOffset = offsetMm;
+      state.editingSketchId = editSketchId;
+      state.polyPoints = [];
+      state.isDrawing = false;
+      exitSketchDragMode(false);
+
+      if (editSketchId) {
+        const sk = state.sketches.find(s => s.id === editSketchId);
+        if (sk && sk.params) {
+          document.getElementById('inpSketchU').value = sk.params.u;
+          document.getElementById('inpSketchV').value = sk.params.v;
+          document.getElementById('inpSketchW').value = sk.params.w;
+          document.getElementById('inpSketchH').value = sk.params.h;
+        }
+      }
+
+      document.getElementById('sketchPlaneBadge').textContent = `${planeCode} (${offsetMm.toFixed(1)} мм)`;
+      sketchOverlay.classList.remove('hidden');
+      updateStepperUI(2);
+      resizeSketchCanvas();
+      state.sketchPanX = sketchCanvas.width / 2;
+      state.sketchPanY = sketchCanvas.height / 2;
+      drawSketchCanvas();
+    }
+
+    function closeSketcher() {
+      exitSketchDragMode(false);
+      state.mode = '3D';
+      state.editingSketchId = null;
+      sketchOverlay.classList.add('hidden');
+      rebuildSketches3D();
+      rebuildBodies3D();
+      updateBottomContextPanel();
+    }
+
+    function resizeSketchCanvas() {
+      if (sketchOverlay.classList.contains('hidden')) return;
+      const rect = sketchCanvas.parentElement.getBoundingClientRect();
+      sketchCanvas.width = rect.width;
+      sketchCanvas.height = rect.height;
+      drawSketchCanvas();
+    }
+
+    function screenToSketchUV(sx, sy) {
+      let u = (sx - state.sketchPanX) / state.sketchZoom;
+      let v = -(sy - state.sketchPanY) / state.sketchZoom;
+      if (state.snapEnabled) {
+        const st = state.gridStep;
+        u = Math.round(u / st) * st;
+        v = Math.round(v / st) * st;
+      }
+      return { u: Math.round(u * 10) / 10, v: Math.round(v * 10) / 10 };
+    }
+
+    function sketchUVToScreen(u, v) {
+      return { x: state.sketchPanX + u * state.sketchZoom, y: state.sketchPanY - v * state.sketchZoom };
+    }
+
+    function drawSketchCanvas() {
+      if (state.mode !== 'SKETCH') return;
+      const w = sketchCanvas.width, h = sketchCanvas.height;
+      sctx.fillStyle = '#0b0e14';
+      sctx.fillRect(0, 0, w, h);
+
+      const stepMm = state.gridStep >= 5 ? state.gridStep : (state.sketchZoom > 2.2 ? 1 : 5);
+      const minU = Math.floor((-state.sketchPanX / state.sketchZoom) / stepMm) * stepMm;
+      const maxU = Math.ceil(((w - state.sketchPanX) / state.sketchZoom) / stepMm) * stepMm;
+      const minV = Math.floor(((state.sketchPanY - h) / state.sketchZoom) / stepMm) * stepMm;
+      const maxV = Math.ceil((state.sketchPanY / state.sketchZoom) / stepMm) * stepMm;
+
+      for (let u = minU; u <= maxU; u += stepMm) {
+        const x = state.sketchPanX + u * state.sketchZoom;
+        const isMajor = Math.abs(u % 10) < 0.001;
+        sctx.strokeStyle = isMajor ? '#1e293b' : '#121722';
+        sctx.lineWidth = isMajor ? 1.2 : 0.7;
+        sctx.beginPath(); sctx.moveTo(x, 0); sctx.lineTo(x, h); sctx.stroke();
+      }
+      for (let v = minV; v <= maxV; v += stepMm) {
+        const y = state.sketchPanY - v * state.sketchZoom;
+        const isMajor = Math.abs(v % 10) < 0.001;
+        sctx.strokeStyle = isMajor ? '#1e293b' : '#121722';
+        sctx.lineWidth = isMajor ? 1.2 : 0.7;
+        sctx.beginPath(); sctx.moveTo(0, y); sctx.lineTo(w, y); sctx.stroke();
+      }
+
+      sctx.strokeStyle = '#ef4444'; sctx.lineWidth = 1.5;
+      sctx.beginPath(); sctx.moveTo(0, state.sketchPanY); sctx.lineTo(w, state.sketchPanY); sctx.stroke();
+      sctx.strokeStyle = '#10b981';
+      sctx.beginPath(); sctx.moveTo(state.sketchPanX, 0); sctx.lineTo(state.sketchPanX, h); sctx.stroke();
+
+      state.sketches.filter(s => s.plane === state.activePlane).forEach(sk => {
+        const pts = generate2DPointsForSketch(sk);
+        if (pts.length < 3) return;
+        const isDrag = state.sketchDragActive && state.sketchDragId === sk.id;
+        sctx.strokeStyle = isDrag ? '#f59e0b' : (sk.id === state.selectedSketchId ? '#fbbf24' : '#38bdf8');
+        sctx.fillStyle = isDrag ? 'rgba(245, 158, 11, 0.3)' : (sk.id === state.selectedSketchId ? 'rgba(251, 191, 36, 0.2)' : 'rgba(56, 189, 248, 0.12)');
+        sctx.lineWidth = isDrag ? 3 : 2;
+        sctx.beginPath();
+        pts.forEach((p, idx) => {
+          const sc = sketchUVToScreen(p.u, p.v);
+          idx === 0 ? sctx.moveTo(sc.x, sc.y) : sctx.lineTo(sc.x, sc.y);
+        });
+        sctx.closePath(); sctx.fill(); sctx.stroke();
+      });
+
+      if (state.isDrawing && state.drawStart && state.drawCurrent) {
+        const u0 = state.drawStart.u, v0 = state.drawStart.v, u1 = state.drawCurrent.u, v1 = state.drawCurrent.v;
+        let params = { u: (u0 + u1) / 2, v: (v0 + v1) / 2, w: Math.max(1, Math.abs(u1 - u0)), h: Math.max(1, Math.abs(v1 - v0)) };
+        if (state.sketchTool === 'circle') {
+          const rad = Math.max(1, Math.hypot(u1 - u0, v1 - v0));
+          params = { u: u0, v: v0, w: rad * 2, h: rad * 2 };
+        }
+        const pts = generate2DPointsForSketch({ shapeType: state.sketchTool, params });
+        if (pts.length >= 3) {
+          sctx.strokeStyle = '#34d399'; sctx.fillStyle = 'rgba(16, 185, 129, 0.2)'; sctx.lineWidth = 2;
+          sctx.beginPath();
+          pts.forEach((p, i) => {
+            const sc = sketchUVToScreen(p.u, p.v);
+            i === 0 ? sctx.moveTo(sc.x, sc.y) : sctx.lineTo(sc.x, sc.y);
+          });
+          sctx.closePath(); sctx.fill(); sctx.stroke();
+        }
+      }
+
+      if (state.sketchTool === 'poly' && state.polyPoints.length > 0) {
+        sctx.strokeStyle = '#fbbf24'; sctx.lineWidth = 2;
+        sctx.beginPath();
+        state.polyPoints.forEach((p, i) => {
+          const sc = sketchUVToScreen(p.u, p.v);
+          i === 0 ? sctx.moveTo(sc.x, sc.y) : sctx.lineTo(sc.x, sc.y);
+        });
+        sctx.stroke();
+      }
+    }
+
+    function registerNewSketch(shapeType, params, points2D = null) {
+      pushHistory();
+      if (state.editingSketchId) {
+        const existing = state.sketches.find(s => s.id === state.editingSketchId);
+        if (existing) {
+          existing.shapeType = shapeType;
+          existing.params = params;
+          if (points2D) existing.points2D = points2D;
+          state.selectedSketchId = existing.id;
+          drawSketchCanvas();
+          showToast('Фигура обновлена');
+          return;
+        }
+      }
+      const names = { rect: 'Прямоугольник', circle: 'Круг', slot: 'Паз', poly: 'Контур' };
+      const sk = {
+        id: genId('sk'),
+        name: `${names[shapeType] || 'Эскиз'} #${state.sketches.length + 1}`,
+        plane: state.activePlane,
+        offset: state.planeOffset,
+        shapeType, params, points2D
+      };
+      state.sketches.push(sk);
+      state.selectedSketchId = sk.id;
+      state.editingSketchId = sk.id;
+      if (params) {
+        document.getElementById('inpSketchU').value = Number(params.u || 0).toFixed(1);
+        document.getElementById('inpSketchV').value = Number(params.v || 0).toFixed(1);
+        document.getElementById('inpSketchW').value = Number(params.w || 20).toFixed(1);
+        document.getElementById('inpSketchH').value = Number(params.h || 20).toFixed(1);
+      }
+      drawSketchCanvas();
+      showToast('Фигура добавлена');
+    }
+
+    function getCanvasPointerPos(e) {
+      const rect = sketchCanvas.getBoundingClientRect();
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      const cy = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: cx - rect.left, y: cy - rect.top };
+    }
+
+    let longPressTimer2D = null;
+    let longPressTriggered2D = false;
+    let lastTapTime2D = 0;
+    let lastTapSketchId2D = null;
+    let pointerDownPos2D = { x: 0, y: 0 };
+
+    sketchCanvas.addEventListener('pointerdown', e => {
+      const pos = getCanvasPointerPos(e);
+      pointerDownPos2D = pos;
+      longPressTriggered2D = false;
+      const uv = screenToSketchUV(pos.x, pos.y);
+      document.getElementById('sketchCoordReadout').textContent = `${uv.u.toFixed(1)}, ${uv.v.toFixed(1)} мм`;
+
+      if (state.sketchDragActive) {
+        state.isActivelyDragging2D = true;
+        state.sketchDragStartUV = uv;
+        const sk = state.sketches.find(s => s.id === state.sketchDragId);
+        state.sketchDragInitialParams = sk && sk.params ? { ...sk.params } : null;
+      }
+
+      clearTimeout(longPressTimer2D);
+      longPressTimer2D = setTimeout(() => {
+        longPressTriggered2D = true;
+        state.isDrawing = false;
+        if (state.sketchDragActive) {
+          exitSketchDragMode(true);
+        } else {
+          const hitSk = find2DSketchAtUV(uv.u, uv.v);
+          if (hitSk) enterSketchDragMode(hitSk.id);
+        }
+      }, 480);
+
+      if (state.sketchDragActive) return;
+
+      if (state.sketchTool === 'poly') {
+        state.polyPoints.push(uv);
+        document.getElementById('btnClosePoly').classList.toggle('hidden', state.polyPoints.length < 3);
+        drawSketchCanvas();
+        return;
+      }
+      state.isDrawing = true;
+      state.drawStart = uv;
+      state.drawCurrent = uv;
+      drawSketchCanvas();
+    });
+
+    sketchCanvas.addEventListener('pointermove', e => {
+      const pos = getCanvasPointerPos(e);
+      if (Math.hypot(pos.x - pointerDownPos2D.x, pos.y - pointerDownPos2D.y) > 8) {
+        clearTimeout(longPressTimer2D);
+      }
+      const uv = screenToSketchUV(pos.x, pos.y);
+      document.getElementById('sketchCoordReadout').textContent = `${uv.u.toFixed(1)}, ${uv.v.toFixed(1)} мм`;
+
+      if (state.sketchDragActive && state.isActivelyDragging2D && state.sketchDragStartUV && state.sketchDragInitialParams) {
+        const sk = state.sketches.find(s => s.id === state.sketchDragId);
+        if (sk && sk.params) {
+          sk.params.u = state.sketchDragInitialParams.u + (uv.u - state.sketchDragStartUV.u);
+          sk.params.v = state.sketchDragInitialParams.v + (uv.v - state.sketchDragStartUV.v);
+          document.getElementById('inpSketchU').value = sk.params.u.toFixed(1);
+          document.getElementById('inpSketchV').value = sk.params.v.toFixed(1);
+          drawSketchCanvas();
+        }
+        return;
+      }
+
+      if (!state.isDrawing) return;
+      state.drawCurrent = uv;
+      drawSketchCanvas();
+    });
+
+    sketchCanvas.addEventListener('pointerup', e => {
+      clearTimeout(longPressTimer2D);
+      state.isActivelyDragging2D = false;
+      if (longPressTriggered2D) return;
+
+      const pos = getCanvasPointerPos(e);
+      const uv = screenToSketchUV(pos.x, pos.y);
+      const moved = Math.hypot(pos.x - pointerDownPos2D.x, pos.y - pointerDownPos2D.y);
+
+      if (moved < 8) {
+        const now = Date.now();
+        const hitSk = find2DSketchAtUV(uv.u, uv.v);
+        const hitId = hitSk ? hitSk.id : null;
+        const isDouble = (now - lastTapTime2D < 320) && (hitId === lastTapSketchId2D || state.sketchDragActive);
+        lastTapTime2D = now;
+        lastTapSketchId2D = hitId;
+
+        if (isDouble) {
+          state.isDrawing = false;
+          if (state.sketchDragActive) exitSketchDragMode(true);
+          else if (hitSk) enterSketchDragMode(hitSk.id);
+          return;
+        }
+      }
+
+      if (state.sketchDragActive) return;
+
+      if (!state.isDrawing || !state.drawStart || !state.drawCurrent) return;
+      state.isDrawing = false;
+      const u0 = state.drawStart.u, v0 = state.drawStart.v, u1 = state.drawCurrent.u, v1 = state.drawCurrent.v;
+      if (state.sketchTool === 'circle') {
+        const r = Math.hypot(u1 - u0, v1 - v0);
+        if (r >= 1) registerNewSketch('circle', { u: u0, v: v0, w: r * 2, h: r * 2 });
+      } else {
+        const w = Math.abs(u1 - u0), h = Math.abs(v1 - v0);
+        if (w >= 1 && h >= 1) registerNewSketch(state.sketchTool, { u: (u0 + u1) / 2, v: (v0 + v1) / 2, w, h });
+      }
+      state.drawStart = null; state.drawCurrent = null;
+      drawSketchCanvas();
+    });
+
+    document.querySelectorAll('.nudge-inp-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const inp = document.getElementById(btn.dataset.target);
+        const nextVal = (parseFloat(inp.value) || 0) + parseFloat(btn.dataset.step);
+        inp.value = inp.min ? Math.max(parseFloat(inp.min), nextVal) : nextVal;
+        if (state.editingSketchId) {
+          const sk = state.sketches.find(s => s.id === state.editingSketchId);
+          if (sk && sk.params) {
+            pushHistory();
+            sk.params.u = parseFloat(document.getElementById('inpSketchU').value) || 0;
+            sk.params.v = parseFloat(document.getElementById('inpSketchV').value) || 0;
+            sk.params.w = Math.max(1, parseFloat(document.getElementById('inpSketchW').value) || 20);
+            sk.params.h = Math.max(1, parseFloat(document.getElementById('inpSketchH').value) || 20);
+            drawSketchCanvas();
+          }
+        }
+      });
+    });
+
+    // =========================================================================
+    // STL PARSER & EXPORTER
+    // =========================================================================
+    function parseSTLBuffer(arrayBuffer) {
+      const dv = new DataView(arrayBuffer);
+      const isASCII = arrayBuffer.byteLength < 84 || (84 + dv.getUint32(80, true) * 50) !== arrayBuffer.byteLength;
+      if (!isASCII) {
+        const triCount = dv.getUint32(80, true);
+        const positions = new Float32Array(triCount * 9);
+        let offset = 84;
+        for (let i = 0; i < triCount; i++) {
+          offset += 12;
+          for (let v = 0; v < 9; v += 3) {
+            const x = dv.getFloat32(offset, true); offset += 4;
+            const y = dv.getFloat32(offset, true); offset += 4;
+            const z = dv.getFloat32(offset, true); offset += 4;
+            positions[i * 9 + v] = x; positions[i * 9 + v + 1] = z; positions[i * 9 + v + 2] = -y;
+          }
+          offset += 2;
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geo.computeVertexNormals();
+        return geo;
+      } else {
+        const text = new TextDecoder().decode(arrayBuffer);
+        const verts = [];
+        const regex = /vertex\s+([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s+([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)\s+([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)/g;
+        let m;
+        while ((m = regex.exec(text)) !== null) verts.push(parseFloat(m[1]), parseFloat(m[3]), -parseFloat(m[2]));
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+        geo.computeVertexNormals();
+        return geo;
+      }
+    }
+
+    function centerAndDropGeometryToBed(geometry) {
+      geometry.computeBoundingBox();
+      const bb = geometry.boundingBox;
+      geometry.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+      geometry.computeBoundingBox();
+    }
+
+    function generateBinarySTLBlob() {
+      const solidBodies = state.bodies.filter(b => b.operation === 'add' && b.computedGeometry);
+      if (solidBodies.length === 0) return null;
+      let totalTriangles = 0;
+      const nonIndexed = solidBodies.map(b => {
+        const g = b.computedGeometry.index ? b.computedGeometry.toNonIndexed() : b.computedGeometry.clone();
+        totalTriangles += g.attributes.position.count / 3;
+        return g;
+      });
+      const buffer = new ArrayBuffer(84 + totalTriangles * 50);
+      const dv = new DataView(buffer);
+      const hdr = 'PocketCAD Mobile STL';
+      for (let i = 0; i < 80; i++) dv.setUint8(i, i < hdr.length ? hdr.charCodeAt(i) : 32);
+      dv.setUint32(80, totalTriangles, true);
+
+      let offset = 84;
+      const pA = new THREE.Vector3(), pB = new THREE.Vector3(), pC = new THREE.Vector3(), cb = new THREE.Vector3(), ab = new THREE.Vector3();
+      nonIndexed.forEach(g => {
+        const pos = g.attributes.position;
+        for (let i = 0; i < pos.count; i += 3) {
+          pA.set(pos.getX(i), -pos.getZ(i), pos.getY(i));
+          pB.set(pos.getX(i + 1), -pos.getZ(i + 1), pos.getY(i + 1));
+          pC.set(pos.getX(i + 2), -pos.getZ(i + 2), pos.getY(i + 2));
+          cb.subVectors(pC, pB); ab.subVectors(pA, pB); cb.cross(ab).normalize();
+          dv.setFloat32(offset, cb.x, true); offset += 4;
+          dv.setFloat32(offset, cb.y, true); offset += 4;
+          dv.setFloat32(offset, cb.z, true); offset += 4;
+          [pA, pB, pC].forEach(v => {
+            dv.setFloat32(offset, v.x, true); offset += 4;
+            dv.setFloat32(offset, v.y, true); offset += 4;
+            dv.setFloat32(offset, v.z, true); offset += 4;
+          });
+          dv.setUint16(offset, 0, true); offset += 2;
+        }
+      });
+      return new Blob([buffer], { type: 'model/stl' });
+    }
+
+    // =========================================================================
+    // CONTROLS & LISTENERS
+    // =========================================================================
+    document.querySelectorAll('.plane-select-btn').forEach(btn => {
+      btn.addEventListener('click', () => openSketcherOnPlane(btn.dataset.plane, 0));
+    });
+
+    document.getElementById('btnTogglePlanesVis').addEventListener('click', e => {
+      state.planesVisible = !state.planesVisible;
+      planesGroup.visible = state.planesVisible;
+      e.currentTarget.textContent = state.planesVisible ? 'Показаны' : 'Скрыты';
+    });
+
+    document.querySelectorAll('.grid-step-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.gridStep = parseFloat(btn.dataset.step);
+        document.getElementById('lblGridStepPill').textContent = `${state.gridStep}мм`;
+        document.querySelectorAll('.grid-step-btn').forEach(b => {
+          const act = parseFloat(b.dataset.step) === state.gridStep;
+          b.className = act ? 'grid-step-btn py-1.5 rounded-lg text-[11px] font-semibold bg-blue-600 text-white' : 'grid-step-btn py-1.5 rounded-lg text-[11px] font-medium bg-white/5 text-slate-400';
+        });
+        drawSketchCanvas();
+      });
+    });
+
+    document.getElementById('btnSnapToggle').addEventListener('click', e => {
+      state.snapEnabled = !state.snapEnabled;
+      e.currentTarget.textContent = `Привязка: ${state.snapEnabled ? 'Вкл' : 'Выкл'}`;
+    });
+
+    document.getElementById('selectBedSize').addEventListener('change', e => {
+      state.bedSize = parseInt(e.target.value, 10) || 250;
+      rebuildBedGrid();
+    });
+
+    function setCameraView(pos, target = [0, 10, 0]) {
+      camera.position.set(...pos); controls.target.set(...target); controls.update();
+    }
+    document.getElementById('btnCamIso').addEventListener('click', () => setCameraView([170, 150, 190]));
+    document.getElementById('btnCamTop').addEventListener('click', () => setCameraView([0, 240, 0.01], [0, 0, 0]));
+    document.getElementById('btnCamFront').addEventListener('click', () => setCameraView([0, 20, 220], [0, 20, 0]));
+    document.getElementById('btnCamSide').addEventListener('click', () => setCameraView([220, 20, 0], [0, 20, 0]));
+
+    document.querySelectorAll('.sketch-tool-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.sketchTool = btn.dataset.stool;
+        state.polyPoints = [];
+        document.getElementById('btnClosePoly').classList.add('hidden');
+        document.querySelectorAll('.sketch-tool-btn').forEach(b => {
+          const act = b.dataset.stool === state.sketchTool;
+          b.className = act ? 'sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 text-white whitespace-nowrap' : 'sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 whitespace-nowrap';
+        });
+        document.getElementById('lblDim1').textContent = state.sketchTool === 'circle' ? 'Ø:' : 'W:';
+        document.getElementById('wrapDim2').classList.toggle('hidden', state.sketchTool === 'circle');
+      });
+    });
+
+    document.getElementById('btnSketchZoomIn').addEventListener('click', () => { state.sketchZoom = Math.min(12, state.sketchZoom * 1.25); drawSketchCanvas(); });
+    document.getElementById('btnSketchZoomOut').addEventListener('click', () => { state.sketchZoom = Math.max(0.8, state.sketchZoom / 1.25); drawSketchCanvas(); });
+
+    document.getElementById('btnAddExactSketch').addEventListener('click', () => {
+      state.editingSketchId = null;
+      const u = parseFloat(document.getElementById('inpSketchU').value) || 0;
+      const v = parseFloat(document.getElementById('inpSketchV').value) || 0;
+      const w = Math.max(1, parseFloat(document.getElementById('inpSketchW').value) || 30);
+      const h = Math.max(1, parseFloat(document.getElementById('inpSketchH').value) || 20);
+      registerNewSketch(state.sketchTool === 'poly' ? 'rect' : state.sketchTool, { u, v, w, h });
+    });
+
+    document.getElementById('btnClosePoly').addEventListener('click', () => {
+      if (state.polyPoints.length >= 3) {
+        registerNewSketch('poly', { u: 0, v: 0, w: 0, h: 0 }, [...state.polyPoints]);
+        state.polyPoints = [];
+        document.getElementById('btnClosePoly').classList.add('hidden');
+      }
+    });
+
+    document.getElementById('btnCancelSketch').addEventListener('click', closeSketcher);
+    document.getElementById('btnFinishSketch').addEventListener('click', () => {
+      if (state.sketches.filter(s => s.plane === state.activePlane).length === 0) {
+        const u = parseFloat(document.getElementById('inpSketchU').value) || 0;
+        const v = parseFloat(document.getElementById('inpSketchV').value) || 0;
+        const w = Math.max(1, parseFloat(document.getElementById('inpSketchW').value) || 40);
+        const h = Math.max(1, parseFloat(document.getElementById('inpSketchH').value) || 25);
+        registerNewSketch('rect', { u, v, w, h });
+      }
+      closeSketcher();
+    });
+
+    document.querySelectorAll('.body-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.btab;
+        document.querySelectorAll('.body-tab-btn').forEach(b => {
+          b.className = b.dataset.btab === tab ? 'body-tab-btn py-1.5 rounded-lg text-[11px] font-semibold bg-blue-600 text-white' : 'body-tab-btn py-1.5 rounded-lg text-[11px] font-semibold text-slate-400';
+        });
+        document.getElementById('btabEdge').classList.toggle('hidden', tab !== 'edge');
+        document.getElementById('btabDraft').classList.toggle('hidden', tab !== 'draft');
+        document.getElementById('btabMove').classList.toggle('hidden', tab !== 'move');
+      });
+    });
+
+    function setPendingOp(op) {
+      state.pendingExtrudeOp = op;
+      document.getElementById('btnOpExtrudeAdd').className = op === 'add' ? 'py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-semibold' : 'py-1.5 rounded-lg text-slate-300 text-[11px] font-semibold';
+      document.getElementById('btnOpExtrudeCut').className = op === 'cut' ? 'py-1.5 rounded-lg bg-rose-600 text-white text-[11px] font-semibold' : 'py-1.5 rounded-lg text-slate-300 text-[11px] font-semibold';
+    }
+    document.getElementById('btnOpExtrudeAdd').addEventListener('click', () => setPendingOp('add'));
+    document.getElementById('btnOpExtrudeCut').addEventListener('click', () => setPendingOp('cut'));
+
+    document.querySelectorAll('.ext-dir-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.pendingExtrudeDir = btn.dataset.dir;
+        document.querySelectorAll('.ext-dir-btn').forEach(b => {
+          b.className = b.dataset.dir === state.pendingExtrudeDir ? 'ext-dir-btn py-1.5 rounded-lg bg-blue-600 text-white text-[10px] font-semibold' : 'ext-dir-btn py-1.5 rounded-lg text-slate-300 text-[10px] font-semibold';
+        });
+      });
+    });
+
+    const rngExt = document.getElementById('rngExtrudeDist');
+    rngExt.addEventListener('input', e => { document.getElementById('lblExtrudeDist').textContent = `${e.target.value} мм`; });
+    document.getElementById('btnExtrudeMinus').addEventListener('click', () => { rngExt.value = Math.max(1, parseInt(rngExt.value) - 1); rngExt.dispatchEvent(new Event('input')); });
+    document.getElementById('btnExtrudePlus').addEventListener('click', () => { rngExt.value = Math.min(120, parseInt(rngExt.value) + 1); rngExt.dispatchEvent(new Event('input')); });
+
+    document.getElementById('btnEditSelectedSketch').addEventListener('click', () => {
+      const sk = state.sketches.find(s => s.id === state.selectedSketchId);
+      if (sk) openSketcherOnPlane(sk.plane, sk.offset, sk.id);
+    });
+
+    document.getElementById('btnApplyExtrude').addEventListener('click', () => {
+      const sk = state.sketches.find(s => s.id === state.selectedSketchId);
+      if (!sk) return;
+      pushHistory();
+      const depth = Math.max(0.5, parseFloat(rngExt.value) || 15);
+      const op = state.pendingExtrudeOp;
+      const body = {
+        id: genId('body'),
+        name: `${op === 'cut' ? 'Вырез' : 'Тело'} #${state.bodies.length + 1}`,
+        type: 'extrude', operation: op, sketchId: sk.id,
+        plane: sk.plane, offset: sk.offset, depth,
+        direction: state.pendingExtrudeDir || 'forward',
+        edgeMode: 'none', edgeAmount: 0, faceTarget: 'top', draftAngle: 0,
+        shiftX: 0, shiftY: 0, shiftZ: 0
+      };
+      state.bodies.push(body);
+      selectBody(body.id, 'Верх (+Z)', 'top');
+      showToast(op === 'cut' ? 'Вырез применён' : '3D-тело создано');
+    });
+
+    document.getElementById('btnDeleteSelectedSketch').addEventListener('click', () => {
+      pushHistory();
+      state.sketches = state.sketches.filter(s => s.id !== state.selectedSketchId);
+      clearSelection();
+    });
+    document.getElementById('btnCloseSketchPanel').addEventListener('click', clearSelection);
+
+    // Body modifiers with Undo snapshots
+    document.querySelectorAll('.edge-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const b = state.bodies.find(x => x.id === state.selectedBodyId);
+        if (!b) return;
+        pushHistory();
+        b.edgeMode = btn.dataset.edgemode;
+        if (b.edgeMode !== 'none' && !b.edgeAmount) b.edgeAmount = 1.5;
+        rebuildBodies3D();
+        updateBottomContextPanel();
+      });
+    });
+
+    document.querySelectorAll('.face-target-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const b = state.bodies.find(x => x.id === state.selectedBodyId);
+        if (!b) return;
+        pushHistory();
+        b.faceTarget = btn.dataset.facetarget;
+        state.selectedFaceName = b.faceTarget === 'top' ? 'Верх (+Z)' : (b.faceTarget === 'bottom' ? 'Низ (-Z)' : 'Обе кромки');
+        rebuildBodies3D();
+        updateBottomContextPanel();
+      });
+    });
+
+    document.querySelectorAll('.body-dir-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const b = state.bodies.find(x => x.id === state.selectedBodyId);
+        if (!b) return;
+        pushHistory();
+        b.direction = btn.dataset.bdir;
+        rebuildBodies3D();
+        updateBottomContextPanel();
+      });
+    });
+
+    ['rngEdgeAmount', 'rngDraftAngle', 'rngBodyDepth'].forEach(id => {
+      document.getElementById(id).addEventListener('pointerdown', () => pushHistory());
+    });
+
+    document.getElementById('rngEdgeAmount').addEventListener('input', e => {
+      const b = state.bodies.find(x => x.id === state.selectedBodyId);
+      if (!b) return;
+      b.edgeAmount = parseFloat(e.target.value) || 0;
+      if (b.edgeAmount > 0 && (!b.edgeMode || b.edgeMode === 'none')) b.edgeMode = 'fillet';
+      document.getElementById('valEdgeAmount').textContent = `${b.edgeAmount.toFixed(1)} мм`;
+      rebuildBodies3D();
+      updateBottomContextPanel();
+    });
+
+    document.getElementById('rngDraftAngle').addEventListener('input', e => {
+      const b = state.bodies.find(x => x.id === state.selectedBodyId);
+      if (!b) return;
+      b.draftAngle = parseFloat(e.target.value) || 0;
+      document.getElementById('valDraftAngle').textContent = `${b.draftAngle}°`;
+      rebuildBodies3D();
+    });
+
+    document.getElementById('rngBodyDepth').addEventListener('input', e => {
+      const b = state.bodies.find(x => x.id === state.selectedBodyId);
+      if (!b) return;
+      b.depth = parseFloat(e.target.value) || 15;
+      if (b.type === 'imported' && b.rawGeometry) {
+        b.rawGeometry.computeBoundingBox();
+        const curH = Math.max(0.5, b.rawGeometry.boundingBox.max.y - b.rawGeometry.boundingBox.min.y);
+        b.rawGeometry.scale(1, b.depth / curH, 1);
+        centerAndDropGeometryToBed(b.rawGeometry);
+      }
+      document.getElementById('valBodyDepth').textContent = `${b.depth}мм`;
+      rebuildBodies3D();
+    });
+
+    document.querySelectorAll('.move-nudge-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const b = state.bodies.find(x => x.id === state.selectedBodyId);
+        if (!b) return;
+        pushHistory();
+        const delta = parseFloat(btn.dataset.delta);
+        if (btn.dataset.axis === 'x') b.shiftX = (b.shiftX || 0) + delta;
+        if (btn.dataset.axis === 'z') b.shiftZ = (b.shiftZ || 0) + delta;
+        rebuildBodies3D();
+      });
+    });
+
+    document.getElementById('btnSketchOnSelectedFace').addEventListener('click', () => {
+      const b = state.bodies.find(x => x.id === state.selectedBodyId);
+      if (!b) return;
+      openSketcherOnPlane(state.lastPickedFacePlane || b.plane || 'XY', state.lastPickedFaceOffset ?? (b.depth || 0));
+    });
+
+    document.getElementById('btnDropToBed').addEventListener('click', () => {
+      const b = state.bodies.find(x => x.id === state.selectedBodyId);
+      if (!b) return;
+      pushHistory();
+      b.offset = 0; b.direction = 'forward'; b.shiftY = 0;
+      if (b.type === 'imported' && b.rawGeometry) centerAndDropGeometryToBed(b.rawGeometry);
+      rebuildBodies3D();
+      showToast('Прижато к столу (Z=0)');
+    });
+
+    document.getElementById('btnDeleteSelectedBody').addEventListener('click', () => {
+      pushHistory();
+      state.bodies = state.bodies.filter(b => b.id !== state.selectedBodyId);
+      clearSelection();
+    });
+    document.getElementById('btnCloseBodyPanel').addEventListener('click', clearSelection);
+
+    document.getElementById('btnClearAll').addEventListener('click', () => {
+      pushHistory();
+      state.sketches = []; state.bodies = []; clearSelection();
+      document.getElementById('treeDrawer').classList.add('hidden');
+    });
+
+    // Templates
+    const samplesModal = document.getElementById('samplesModal');
+    document.getElementById('btnOpenSamples').addEventListener('click', () => samplesModal.classList.remove('hidden'));
+    document.getElementById('btnCloseSamples').addEventListener('click', () => samplesModal.classList.add('hidden'));
+
+    function loadTemplate(tplName, recordHistory = true) {
+      if (recordHistory) pushHistory();
+      state.sketches = []; state.bodies = [];
+      if (tplName === 'bracket') {
+        const skBase = { id: genId('sk'), name: 'Основание 60×40', plane: 'XY', offset: 0, shapeType: 'rect', params: { u: 0, v: 0, w: 60, h: 40 } };
+        const skH1 = { id: genId('sk'), name: 'Отверстие Ø6 (Л)', plane: 'XY', offset: 0, shapeType: 'circle', params: { u: -18, v: 0, w: 6, h: 6 } };
+        const skH2 = { id: genId('sk'), name: 'Отверстие Ø6 (П)', plane: 'XY', offset: 0, shapeType: 'circle', params: { u: 18, v: 0, w: 6, h: 6 } };
+        state.sketches.push(skBase, skH1, skH2);
+        const bBase = { id: genId('body'), name: 'Кронштейн', type: 'extrude', operation: 'add', sketchId: skBase.id, plane: 'XY', offset: 0, depth: 12, direction: 'forward', edgeMode: 'chamfer', edgeAmount: 1.5, faceTarget: 'top', draftAngle: 0 };
+        const bC1 = { id: genId('body'), name: 'Вырез Ø6 (Л)', type: 'extrude', operation: 'cut', sketchId: skH1.id, plane: 'XY', offset: 0, depth: 12, direction: 'forward', edgeMode: 'none', edgeAmount: 0, faceTarget: 'top', draftAngle: 0 };
+        const bC2 = { id: genId('body'), name: 'Вырез Ø6 (П)', type: 'extrude', operation: 'cut', sketchId: skH2.id, plane: 'XY', offset: 0, depth: 12, direction: 'forward', edgeMode: 'none', edgeAmount: 0, faceTarget: 'top', draftAngle: 0 };
+        state.bodies.push(bBase, bC1, bC2);
+        selectBody(bBase.id, 'Верх (+Z)', 'top');
+      } else if (tplName === 'enclosure') {
+        const skO = { id: genId('sk'), name: 'Корпус 55×38', plane: 'XY', offset: 0, shapeType: 'rect', params: { u: 0, v: 0, w: 55, h: 38 } };
+        state.sketches.push(skO);
+        const bO = { id: genId('body'), name: 'Корпус датчика', type: 'extrude', operation: 'add', sketchId: skO.id, plane: 'XY', offset: 0, depth: 22, direction: 'forward', edgeMode: 'fillet', edgeAmount: 2.0, faceTarget: 'top', draftAngle: 3 };
+        state.bodies.push(bO);
+        selectBody(bO.id, 'Верх (+Z)', 'top');
+      } else if (tplName === 'spacer') {
+        const skO = { id: genId('sk'), name: 'Внешний Ø22', plane: 'XY', offset: 0, shapeType: 'circle', params: { u: 0, v: 0, w: 22, h: 22 } };
+        const skI = { id: genId('sk'), name: 'Отверстие Ø8.4', plane: 'XY', offset: 0, shapeType: 'circle', params: { u: 0, v: 0, w: 8.4, h: 8.4 } };
+        state.sketches.push(skO, skI);
+        const bO = { id: genId('body'), name: 'Втулка M8', type: 'extrude', operation: 'add', sketchId: skO.id, plane: 'XY', offset: 0, depth: 12, direction: 'forward', edgeMode: 'chamfer', edgeAmount: 1.0, faceTarget: 'top', draftAngle: 0 };
+        const bC = { id: genId('body'), name: 'Вырез Ø8.4', type: 'extrude', operation: 'cut', sketchId: skI.id, plane: 'XY', offset: 0, depth: 12, direction: 'forward', edgeMode: 'none', edgeAmount: 0, faceTarget: 'top', draftAngle: 0 };
+        state.bodies.push(bO, bC);
+        selectBody(bO.id, 'Верх (+Z)', 'top');
+      }
+      samplesModal.classList.add('hidden');
+    }
+
+    document.querySelectorAll('.template-item-btn').forEach(btn => {
+      btn.addEventListener('click', () => loadTemplate(btn.dataset.template, true));
+    });
+
+    // Import & Export STL
+    document.getElementById('stlFileInput').addEventListener('change', e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          pushHistory();
+          const geo = parseSTLBuffer(ev.target.result);
+          centerAndDropGeometryToBed(geo);
+          geo.computeBoundingBox();
+          const impBody = {
+            id: genId('stl'),
+            name: file.name.replace(/\.stl$/i, ''),
+            type: 'imported', operation: 'add', plane: 'XY', offset: 0,
+            depth: Math.round((geo.boundingBox.max.y - geo.boundingBox.min.y) * 10) / 10 || 20,
+            direction: 'forward', edgeMode: 'none', edgeAmount: 0, faceTarget: 'top', draftAngle: 0,
+            rawGeometry: geo
+          };
+          state.bodies.push(impBody);
+          selectBody(impBody.id, 'Верх (+Z)', 'top');
+          showToast(`Загружен ${file.name}`);
+        } catch { showToast('Ошибка чтения STL'); }
+      };
+      reader.readAsArrayBuffer(file);
+      e.target.value = '';
+    });
+
+
+    async function exportBlobViaNativeOrBrowser(blob, fileName, shareMode) {
+      if (window.AndroidBridge && typeof window.AndroidBridge.saveOrShareSTL === 'function') {
+        const buf = await blob.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let bin = '';
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        const b64 = btoa(bin);
+        window.AndroidBridge.saveOrShareSTL(b64, fileName, !!shareMode);
+        return true;
+      }
+      return false;
+    }
+
+    document.getElementById('btnExportSTL').addEventListener('click', async () => {
+      const blob = generateBinarySTLBlob();
+      if (!blob) { showToast('Нет 3D-тел для экспорта'); return; }
+      const fileName = `part_${new Date().toISOString().slice(0, 10)}.stl`;
+      if (await exportBlobViaNativeOrBrowser(blob, fileName, false)) {
+        showToast(`Сохранено в Загрузки: ${fileName}`);
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      showToast(`Файл ${fileName} сохранён`);
+    });
+
+    document.getElementById('btnSharePrint').addEventListener('click', async () => {
+      const blob = generateBinarySTLBlob();
+      if (!blob) { showToast('Нет 3D-тел для отправки'); return; }
+      const fileName = `print_model_${Date.now().toString().slice(-4)}.stl`;
+      if (await exportBlobViaNativeOrBrowser(blob, fileName, true)) {
+        return;
+      }
+      const file = new File([blob], fileName, { type: 'model/stl' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ title: fileName, text: 'STL для 3D-печати', files: [file] }); return; } catch {}
+      }
+      document.getElementById('btnExportSTL').click();
+    });
+
+    // Init
+    loadTemplate('bracket', false);
+    updateUndoButtonUI();
+    window.addEventListener('resize', () => {
+      camera.aspect = viewport.clientWidth / viewport.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+      resizeSketchCanvas();
+    });
+    window.onload = function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    };
+  </script>
+</body>
+</html>
