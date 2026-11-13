@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>PocketCAD 3D — Мобильный STL редактор</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -10,15 +10,24 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #0b0e14; color: #f1f5f9; overflow: hidden; margin: 0; padding: 0; }
+    html, body { height: 100dvh; width: 100vw; max-height: 100dvh; overflow: hidden; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #0b0e14; color: #f1f5f9; }
     canvas { display: block; touch-action: none; }
     .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
     .custom-scroll::-webkit-scrollbar-track { background: transparent; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+    .pb-safe { padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0.35rem)); }
     input[type="range"] { accent-color: #3b82f6; height: 6px; border-radius: 99px; }
+    @media (max-height: 540px) {
+      #stepperBar { display: none !important; }
+      #bottomContextMenu { max-height: 44dvh !important; }
+      #sketchBottomBody { max-height: 40dvh !important; }
+    }
   </style>
 </head>
-<body class="h-screen w-screen flex flex-col bg-[#0b0e14] text-slate-100 overflow-hidden">
+<body class="h-full w-full flex flex-col bg-[#0b0e14] text-slate-100 overflow-hidden pt-safe">
 
   <!-- LOGO PILL FOR RESTORING UI IN ZEN MODE -->
   <button id="btnLogoRestore" class="hidden fixed top-2.5 left-3 z-50 bg-[#121620]/80 backdrop-blur-xl hover:bg-slate-800 text-white border border-white/15 px-2.5 py-1.5 rounded-xl shadow-2xl flex items-center gap-2 transition active:scale-95" title="Нажмите, чтобы вернуть интерфейс">
@@ -54,18 +63,18 @@
 
   <!-- NATIVE ANDROID-STYLE APP BAR + COLLAPSIBLE STEPPER -->
   <header id="mainHeader" class="bg-[#121620]/95 backdrop-blur-xl border-b border-white/10 shrink-0 z-30">
-    <div class="h-12 px-3 flex items-center justify-between gap-2">
-      <button id="btnLogoZen" class="flex items-center gap-2 min-w-0 text-left group active:scale-95 transition" title="Скрыть весь интерфейс для просмотра модели">
-        <div class="w-8 h-8 rounded-xl bg-blue-600 group-hover:bg-blue-500 flex items-center justify-center font-bold text-xs shrink-0 shadow-md shadow-blue-600/30 transition">
+    <div class="h-11 px-2.5 flex items-center justify-between gap-1.5">
+      <button id="btnLogoZen" class="flex items-center gap-1.5 shrink-0 text-left group active:scale-95 transition" title="Скрыть весь интерфейс для просмотра модели">
+        <div class="w-7 h-7 rounded-lg bg-blue-600 group-hover:bg-blue-500 flex items-center justify-center font-bold text-[11px] shrink-0 shadow-md shadow-blue-600/30 transition">
           3D
         </div>
-        <div class="min-w-0 flex items-center gap-2">
-          <span class="text-sm font-bold text-white tracking-tight truncate">PocketCAD</span>
-          <span id="bboxValue" class="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full truncate">0×0×0 мм</span>
+        <div class="flex flex-col leading-none">
+          <span class="text-xs font-bold text-white tracking-tight">PocketCAD</span>
+          <span id="bboxValue" class="text-[9px] font-mono text-emerald-400 mt-0.5 whitespace-nowrap">0×0×0 мм</span>
         </div>
       </button>
 
-      <div class="flex items-center gap-1.5 shrink-0">
+      <div class="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
         <button id="btnUndo" disabled class="bg-white/5 hover:bg-white/10 active:scale-95 disabled:opacity-35 disabled:pointer-events-none text-slate-200 border border-white/10 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition" title="Отменить">
           <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
           <span class="hidden sm:inline">Отмена</span>
@@ -82,9 +91,18 @@
         </label>
         <input id="stlFileInput" type="file" accept=".stl" class="hidden">
 
-        <button id="btnOpenSamples" class="bg-white/5 hover:bg-white/10 active:scale-95 text-slate-200 border border-white/10 px-2.5 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition" title="Шаблоны">
+        <button id="btnOpenHardwareModal" class="bg-amber-500/15 hover:bg-amber-500/25 active:scale-95 text-amber-300 border border-amber-500/30 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition" title="Генератор резьбы ISO, защёлок Snap-Fit и стоек ESP32">
+          <span>⚙</span>
+          <span class="hidden sm:inline">Резьба/Защёлки</span>
+        </button>
+
+        <button id="btnOpenPatternModal" class="bg-purple-500/15 hover:bg-purple-500/25 active:scale-95 text-purple-300 border border-purple-500/30 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition" title="Линейный и круговой массив (сетка N×M или по кругу)">
+          <span>⊞</span>
+          <span class="hidden md:inline">Массив</span>
+        </button>
+
+        <button id="btnOpenSamples" class="bg-white/5 hover:bg-white/10 active:scale-95 text-slate-200 border border-white/10 px-2 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1 transition" title="Шаблоны">
           <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-          <span class="hidden md:inline">Шаблон</span>
         </button>
 
         <button id="btnToggleStepper" class="bg-white/5 hover:bg-white/10 active:scale-95 text-slate-300 border border-white/10 px-2 py-1.5 rounded-xl text-xs font-semibold transition" title="Свернуть/развернуть навигацию">
@@ -117,9 +135,9 @@
     </div>
 
     <!-- TOP FLOATING PILLS -->
-    <div id="floatingTopControls" class="absolute top-3 left-3 right-3 z-20 flex items-start justify-between pointer-events-none">
-      <div class="flex flex-col gap-2 pointer-events-auto">
-        <div class="flex items-center gap-1.5">
+    <div id="floatingTopControls" class="absolute top-2 left-2 right-2 z-20 flex items-start justify-between gap-1.5 pointer-events-none">
+      <div class="flex flex-col gap-1.5 pointer-events-auto max-w-[65vw]">
+        <div class="flex items-center gap-1 overflow-x-auto no-scrollbar">
           <button id="btnToggleGridDrawer" class="bg-[#151a26]/85 backdrop-blur-xl hover:bg-slate-800 text-slate-200 border border-white/10 px-3 py-1.5 rounded-full text-[11px] font-semibold shadow-lg flex items-center gap-1.5 active:scale-95 transition">
             <span class="text-blue-400">⊞</span>
             <span>Сетка <span id="lblGridStepPill">1мм</span></span>
@@ -135,7 +153,7 @@
         </div>
 
         <!-- Grid, Snap & Long-Press Step Drawer -->
-        <div id="gridDrawer" class="hidden w-64 bg-[#151a26]/95 backdrop-blur-xl border border-white/15 rounded-2xl p-3 shadow-2xl space-y-2.5">
+        <div id="gridDrawer" class="hidden w-64 max-w-[calc(100vw-1rem)] max-h-[55dvh] overflow-y-auto custom-scroll bg-[#151a26]/95 backdrop-blur-xl border border-white/15 rounded-2xl p-3 shadow-2xl space-y-2.5">
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-slate-200">Сетка и привязка</span>
             <div class="flex items-center gap-1.5">
@@ -178,7 +196,7 @@
         </div>
 
         <!-- Camera Drawer -->
-        <div id="camDrawer" class="hidden w-56 bg-[#151a26]/95 backdrop-blur-xl border border-white/15 rounded-2xl p-2 shadow-2xl space-y-1.5">
+        <div id="camDrawer" class="hidden w-56 max-w-[calc(100vw-1rem)] bg-[#151a26]/95 backdrop-blur-xl border border-white/15 rounded-2xl p-2 shadow-2xl space-y-1.5">
           <div class="flex items-center justify-between px-1">
             <span class="text-[10px] text-slate-400 font-semibold">Вид камеры</span>
             <button data-closedrawer="camDrawer" class="close-drawer-btn text-xs text-slate-400 hover:text-white px-1">▲</button>
@@ -199,7 +217,7 @@
           <span>Объекты (<span id="treeCountBadge">0</span>)</span>
         </button>
 
-        <div id="treeDrawer" class="hidden w-72 max-h-[55vh] flex flex-col bg-[#151a26]/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+        <div id="treeDrawer" class="hidden w-72 max-w-[calc(100vw-1rem)] max-h-[52dvh] flex flex-col bg-[#151a26]/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
           <div class="px-3 py-2 border-b border-white/10 flex items-center justify-between gap-1">
             <span class="text-xs font-semibold text-slate-200">Эскизы и тела</span>
             <div class="flex items-center gap-1">
@@ -214,14 +232,14 @@
     </div>
 
     <!-- NATIVE ANDROID BOTTOM SHEET -->
-    <div id="bottomDockWrapper" class="absolute bottom-0 left-1/2 -translate-x-1/2 z-20 w-full max-w-2xl px-2 pb-2 transition-all">
-      <div id="bottomSheetCard" class="bg-[#141925]/95 backdrop-blur-xl border border-white/15 rounded-3xl shadow-2xl overflow-hidden">
-        <button id="btnCollapseBottomDock" class="w-full pt-2 pb-1.5 flex flex-col items-center justify-center gap-0.5 hover:bg-white/5 transition">
-          <span class="w-10 h-1 rounded-full bg-slate-600"></span>
-          <span id="lblCollapseDock" class="text-[10px] text-slate-400 font-medium">Свернуть</span>
+    <div id="bottomDockWrapper" class="absolute bottom-0 left-1/2 -translate-x-1/2 z-20 w-full max-w-2xl px-1.5 pb-safe transition-all">
+      <div id="bottomSheetCard" class="bg-[#141925]/95 backdrop-blur-xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden">
+        <button id="btnCollapseBottomDock" class="w-full pt-1.5 pb-1 flex flex-col items-center justify-center gap-0.5 hover:bg-white/5 transition">
+          <span class="w-9 h-1 rounded-full bg-slate-600"></span>
+          <span id="lblCollapseDock" class="text-[9px] text-slate-400 font-medium leading-none">Свернуть</span>
         </button>
 
-        <div id="bottomContextMenu" class="px-3 pb-3 pt-1">
+        <div id="bottomContextMenu" class="px-2.5 pb-2.5 pt-0.5 max-h-[36dvh] overflow-y-auto custom-scroll">
           
           <!-- STEP 1: CHOOSE PLANE -->
           <div id="panelStep1Planes" class="space-y-2">
@@ -290,21 +308,21 @@
           </div>
 
           <!-- STEP 3B: BODY / GROUP / SPECIFIC FACE SELECTED -->
-          <div id="panelBodySelected" class="hidden space-y-2.5">
-            <div class="flex items-center justify-between gap-1">
+          <div id="panelBodySelected" class="hidden space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-1.5">
               <div class="flex items-center gap-1.5 min-w-0">
-                <span id="selectedBodyLabel" class="text-xs font-bold text-white truncate">Деталь</span>
-                <span id="selectedFaceBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 truncate">
+                <span id="selectedBodyLabel" class="text-xs font-bold text-white truncate max-w-[140px] sm:max-w-xs">Деталь</span>
+                <span id="selectedFaceBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 whitespace-nowrap">
                   Грань: Верх (+Z)
                 </span>
               </div>
-              <div class="flex items-center gap-1 shrink-0">
-                <button id="btnGroupOrUngroupBody" class="px-2 py-1 rounded-xl bg-purple-600/25 text-purple-300 border border-purple-500/30 text-[11px] font-semibold">🔗 Объед.</button>
-                <button id="btnSketchOnSelectedFace" class="px-2 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold active:scale-95 shadow">✎ Эскиз</button>
-                <button id="btnCloneSelectedBody" class="px-2 py-1 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[11px] font-semibold" title="Клонировать 3D-тело вместе с эскизом">⧉</button>
-                <button id="btnToggleDragBody" class="px-2 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-semibold">✋</button>
-                <button id="btnDeleteSelectedBody" class="px-2 py-1 rounded-xl bg-rose-500/15 text-rose-300 text-[11px]">🗑</button>
-                <button id="btnCloseBodyPanel" class="px-2 py-1 rounded-xl bg-white/5 text-slate-400 text-xs">✕</button>
+              <div class="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-full">
+                <button id="btnGroupOrUngroupBody" class="px-2 py-1 rounded-xl bg-purple-600/25 text-purple-300 border border-purple-500/30 text-[11px] font-semibold whitespace-nowrap shrink-0">🔗 Объед.</button>
+                <button id="btnSketchOnSelectedFace" class="px-2 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold active:scale-95 shadow whitespace-nowrap shrink-0">✎ Эскиз</button>
+                <button id="btnCloneSelectedBody" class="px-2 py-1 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[11px] font-semibold shrink-0" title="Клонировать 3D-тело вместе с эскизом">⧉</button>
+                <button id="btnToggleDragBody" class="px-2 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-semibold shrink-0">✋</button>
+                <button id="btnDeleteSelectedBody" class="px-2 py-1 rounded-xl bg-rose-500/15 text-rose-300 text-[11px] shrink-0">🗑</button>
+                <button id="btnCloseBodyPanel" class="px-2 py-1 rounded-xl bg-white/5 text-slate-400 text-xs shrink-0">✕</button>
               </div>
             </div>
 
@@ -325,7 +343,7 @@
               </div>
 
               <!-- Specific Face Selector (Can tap face on 3D model OR tap button here) -->
-              <div class="grid grid-cols-7 gap-1 bg-black/30 p-1 rounded-xl">
+              <div class="grid grid-cols-7 gap-1 bg-black/30 p-1 rounded-xl overflow-x-auto no-scrollbar min-w-0">
                 <button data-facetarget="top" class="face-target-btn py-1 rounded-lg text-[10px] font-semibold bg-emerald-600 text-white">Верх</button>
                 <button data-facetarget="bottom" class="face-target-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Низ</button>
                 <button data-facetarget="front" class="face-target-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Перед</button>
@@ -453,6 +471,7 @@
           </button>
           <button id="btnUndo2D" class="px-2 py-1.5 rounded-xl bg-white/5 text-amber-300 text-xs font-semibold border border-white/10">↶</button>
           <button id="btnClone2D" class="px-2 py-1.5 rounded-xl bg-blue-500/20 text-blue-300 text-xs font-semibold border border-blue-500/30" title="Дублировать выбранную фигуру со сдвигом">⧉</button>
+          <button id="btnPattern2D" class="px-2 py-1.5 rounded-xl bg-purple-500/20 text-purple-300 text-xs font-semibold border border-purple-500/30" title="Массив N×M или по кругу">⊞</button>
           <button id="btnDelete2D" class="px-2 py-1.5 rounded-xl bg-rose-500/20 text-rose-300 text-xs font-semibold border border-rose-500/30">🗑</button>
           <button id="btnCancelSketch" class="px-2.5 py-1.5 rounded-xl bg-white/5 text-slate-300 text-xs font-medium border border-white/10">Назад</button>
           <button id="btnFinishSketch" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-lg">Готово → 3D</button>
@@ -466,7 +485,7 @@
           Перемещение (прилипает к реперным точкам) • 2× тап/удержание = поставить
         </div>
 
-        <div id="sketchToolPalette" class="absolute top-3 left-1/2 -translate-x-1/2 bg-[#151a26]/95 backdrop-blur-xl border border-white/15 rounded-2xl p-1 shadow-2xl flex items-center gap-1 max-w-[96%] overflow-x-auto">
+        <div id="sketchToolPalette" class="absolute top-2 left-1/2 -translate-x-1/2 bg-[#151a26]/95 backdrop-blur-xl border border-white/15 rounded-2xl p-1 shadow-2xl flex items-center gap-1 max-w-[96vw] overflow-x-auto no-scrollbar">
           <button data-stool="rect" class="sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 text-white whitespace-nowrap">▭ Прямоуг.</button>
           <button data-stool="circle" class="sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 whitespace-nowrap">◯ Круг</button>
           <button data-stool="slot" class="sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 whitespace-nowrap">⬭ Паз</button>
@@ -483,7 +502,7 @@
             <span class="w-8 h-1 rounded-full bg-slate-600"></span>
             <span id="lblCollapse2D">Свернуть размеры</span>
           </button>
-          <div id="sketchBottomBody" class="px-3 pb-3 space-y-2">
+          <div id="sketchBottomBody" class="px-2.5 pb-2.5 space-y-1.5 max-h-[34dvh] overflow-y-auto custom-scroll">
             <div class="flex items-center justify-between gap-1 overflow-x-auto pb-1 border-b border-white/10 text-[10px]">
               <span class="text-slate-400 shrink-0">Крепёж:</span>
               <button data-fastener="M3_hole" class="fastener-preset-btn px-1.5 py-0.5 rounded bg-white/5 hover:bg-blue-600/30 text-slate-200 whitespace-nowrap">◯ M3 (3.2)</button>
@@ -553,9 +572,175 @@
       </div>
     </div>
 
+    <!-- PATTERN MODAL (ROADMAP ITEM 3: LINEAR GRID N×M & CIRCULAR ARRAY) -->
+    <div id="patternModal" class="hidden absolute inset-0 z-40 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-[#151a26] border border-white/15 rounded-3xl max-w-md w-full max-h-[86dvh] overflow-y-auto custom-scroll p-4 shadow-2xl space-y-3">
+        <div class="flex items-center justify-between border-b border-white/10 pb-2">
+          <h3 class="text-sm font-bold text-white">⊞ Массив по сетке и по кругу</h3>
+          <button id="btnClosePatternModal" class="text-slate-400 hover:text-white text-sm">✕</button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-1 bg-black/35 p-1 rounded-xl">
+          <button data-ptab="linear" class="pattern-tab-btn py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white">По сетке (N × M)</button>
+          <button data-ptab="circular" class="pattern-tab-btn py-1.5 rounded-lg text-xs font-semibold text-slate-400">По кругу (360°)</button>
+        </div>
+
+        <!-- Linear Grid Settings -->
+        <div id="patternLinearBox" class="space-y-2.5 text-xs">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Кол-во по X (N):</label>
+              <input id="inpPatNX" type="number" min="1" max="20" value="3" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Шаг по X (мм):</label>
+              <input id="inpPatStepX" type="number" step="0.5" value="15" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Кол-во по Y (M):</label>
+              <input id="inpPatNY" type="number" min="1" max="20" value="2" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Шаг по Y (мм):</label>
+              <input id="inpPatStepY" type="number" step="0.5" value="15" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+          </div>
+          <button id="btnApplyLinearPattern" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg">
+            Построить сетку N × M
+          </button>
+        </div>
+
+        <!-- Circular Array Settings -->
+        <div id="patternCircularBox" class="hidden space-y-2.5 text-xs">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Количество копий:</label>
+              <input id="inpPatCircCount" type="number" min="2" max="36" value="6" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Радиус круга R (мм):</label>
+              <input id="inpPatCircRadius" type="number" min="1" step="0.5" value="20" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Центр X (мм):</label>
+              <input id="inpPatCircCX" type="number" step="1" value="0" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Центр Y (мм):</label>
+              <input id="inpPatCircCY" type="number" step="1" value="0" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+          </div>
+          <button id="btnApplyCircularPattern" class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold shadow-lg">
+            Разместить по кругу (360°)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HARDWARE GENERATOR MODAL (ROADMAP ITEM 4: ISO THREADS, SNAP-FIT CLIPS, PCB STANDOFFS) -->
+    <div id="hardwareModal" class="hidden absolute inset-0 z-40 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-[#151a26] border border-white/15 rounded-3xl max-w-md w-full max-h-[86dvh] overflow-y-auto custom-scroll p-4 shadow-2xl space-y-3">
+        <div class="flex items-center justify-between border-b border-white/10 pb-2">
+          <h3 class="text-sm font-bold text-white">⚙ Инженерные элементы (Резьба / Защёлки)</h3>
+          <button id="btnCloseHardwareModal" class="text-slate-400 hover:text-white text-sm">✕</button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-1 bg-black/35 p-1 rounded-xl">
+          <button data-htab="thread" class="hw-tab-btn py-1.5 rounded-lg text-[11px] font-semibold bg-amber-600 text-white">Резьба ISO</button>
+          <button data-htab="snapfit" class="hw-tab-btn py-1.5 rounded-lg text-[11px] font-semibold text-slate-400">Защёлка</button>
+          <button data-htab="standoff" class="hw-tab-btn py-1.5 rounded-lg text-[11px] font-semibold text-slate-400">Стойка PCB</button>
+        </div>
+
+        <!-- Tab 1: Metric ISO Thread Generator -->
+        <div id="hwThreadBox" class="space-y-2.5 text-xs">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Стандарт резьбы:</label>
+              <select id="selThreadSpec" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 text-white">
+                <option value="M4">M4 × 0.7 мм</option>
+                <option value="M5">M5 × 0.8 мм</option>
+                <option value="M6" selected>M6 × 1.0 мм</option>
+                <option value="M8">M8 × 1.25 мм</option>
+                <option value="M10">M10 × 1.5 мм</option>
+                <option value="M12">M12 × 1.75 мм</option>
+              </select>
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Тип элемента:</label>
+              <select id="selThreadKind" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 text-white">
+                <option value="bolt">Шпилька / Болт (+)</option>
+                <option value="nut">Гайка с резьбой</option>
+              </select>
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Длина / Высота (мм):</label>
+              <input id="inpThreadLen" type="number" min="3" max="80" value="12" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Зазор 3D-печати (мм):</label>
+              <input id="inpThreadClearance" type="number" step="0.05" value="0.20" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-emerald-400">
+            </div>
+          </div>
+          <button id="btnBuildISOThread" class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold shadow-lg">
+            Создать 3D-резьбу ISO
+          </button>
+        </div>
+
+        <!-- Tab 2: Cantilever Snap-Fit Clip for Enclosures -->
+        <div id="hwSnapfitBox" class="hidden space-y-2.5 text-xs">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Высота лапки L (мм):</label>
+              <input id="inpSnapLen" type="number" min="5" max="40" value="12" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Ширина защёлки W (мм):</label>
+              <input id="inpSnapWidth" type="number" min="3" max="30" value="8" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Толщина упругой ножки:</label>
+              <input id="inpSnapThick" type="number" step="0.2" min="1.0" max="5" value="1.8" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Выступ зуба (мм):</label>
+              <input id="inpSnapHook" type="number" step="0.2" min="0.6" max="4" value="1.5" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+          </div>
+          <button id="btnBuildSnapFit" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg">
+            Добавить защёлку корпуса (Snap-Fit)
+          </button>
+        </div>
+
+        <!-- Tab 3: Reinforced PCB Standoff (ESP32 / Sensors) -->
+        <div id="hwStandoffBox" class="hidden space-y-2.5 text-xs">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Внешний Ø стойки (мм):</label>
+              <input id="inpStandoffOD" type="number" step="0.5" value="6.0" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Отверстие под винт Ø:</label>
+              <input id="inpStandoffID" type="number" step="0.1" value="2.8" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Высота стойки H (мм):</label>
+              <input id="inpStandoffH" type="number" step="0.5" value="8.0" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-white">
+            </div>
+            <div class="bg-black/30 p-2 rounded-xl border border-white/10">
+              <label class="text-[10px] text-slate-400 block mb-1">Галтель основания (мм):</label>
+              <input id="inpStandoffFillet" type="number" step="0.5" value="1.5" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 font-mono text-emerald-400">
+            </div>
+          </div>
+          <button id="btnBuildStandoff" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg">
+            Добавить усиленную стойку под плату
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- TEMPLATES MODAL -->
     <div id="samplesModal" class="hidden absolute inset-0 z-40 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-      <div class="bg-[#151a26] border border-white/15 rounded-3xl max-w-md w-full p-4 shadow-2xl space-y-3">
+      <div class="bg-[#151a26] border border-white/15 rounded-3xl max-w-md w-full max-h-[86dvh] overflow-y-auto custom-scroll p-4 shadow-2xl space-y-3">
         <div class="flex items-center justify-between border-b border-white/10 pb-2">
           <h3 class="text-sm font-bold text-white">Шаблоны деталей</h3>
           <button id="btnCloseSamples" class="text-slate-400 hover:text-white text-sm">✕</button>
@@ -1010,6 +1195,29 @@
       }
     }
 
+    function ensureOutwardWinding(geometry) {
+      if (!geometry || !geometry.attributes || !geometry.attributes.position) return;
+      if (geometry.index) return; // Indexed geometries (ShapeGeometry) are 2D flat fills
+      const pos = geometry.attributes.position;
+      let signedVol = 0;
+      const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), cr = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i += 3) {
+        a.set(pos.getX(i), pos.getY(i), pos.getZ(i));
+        b.set(pos.getX(i + 1), pos.getY(i + 1), pos.getZ(i + 1));
+        c.set(pos.getX(i + 2), pos.getY(i + 2), pos.getZ(i + 2));
+        cr.crossVectors(b, c);
+        signedVol += a.dot(cr);
+      }
+      if (signedVol < 0) {
+        for (let i = 0; i < pos.count; i += 3) {
+          const x1 = pos.getX(i + 1), y1 = pos.getY(i + 1), z1 = pos.getZ(i + 1);
+          pos.setXYZ(i + 1, pos.getX(i + 2), pos.getY(i + 2), pos.getZ(i + 2));
+          pos.setXYZ(i + 2, x1, y1, z1);
+        }
+        pos.needsUpdate = true;
+      }
+    }
+
     function orientExtrudedGeometryToPlane(geometry, plane, offset, depth, direction) {
       let startN = offset;
       if (direction === 'backward') startN = offset - depth;
@@ -1021,6 +1229,7 @@
         pos.setXYZ(i, mapped.x, mapped.y, mapped.z);
       }
       pos.needsUpdate = true;
+      if (depth > 0) ensureOutwardWinding(geometry);
       geometry.computeVertexNormals();
       geometry.computeBoundingBox();
     }
@@ -1299,6 +1508,30 @@
           );
         }
       }
+
+      // Inner side walls for every hole in cutHoles (critical for watertight manifold STL in slicers!)
+      const zBot = slices[0].z;
+      const zTop = slices[slices.length - 1].z;
+      (cutHoles || []).forEach(hp => {
+        if (hp.length < 3) return;
+        // Compute signed 2D area of hp to ensure hole wall normals point INWARD toward hole center
+        let area2 = 0;
+        for (let i = 0; i < hp.length; i++) {
+          const j = (i + 1) % hp.length;
+          area2 += hp[i].u * hp[j].v - hp[j].u * hp[i].v;
+        }
+        const ordered = area2 > 0 ? hp.slice().reverse() : hp.slice();
+        const n = ordered.length;
+        for (let i = 0; i < n; i++) {
+          const j = (i + 1) % n;
+          const p00 = { u: ordered[i].u, v: ordered[i].v, z: zBot };
+          const p01 = { u: ordered[j].u, v: ordered[j].v, z: zBot };
+          const p10 = { u: ordered[i].u, v: ordered[i].v, z: zTop };
+          const p11 = { u: ordered[j].u, v: ordered[j].v, z: zTop };
+          pushTri(p00, p01, p11);
+          pushTri(p00, p11, p10);
+        }
+      });
 
       // Caps (also support cutHoles on top/bottom caps!)
       const buildCapTris = (slice, flip) => {
@@ -3082,6 +3315,7 @@
       let offset = 84;
       const pA = new THREE.Vector3(), pB = new THREE.Vector3(), pC = new THREE.Vector3(), cb = new THREE.Vector3(), ab = new THREE.Vector3();
       nonIndexed.forEach(g => {
+        ensureOutwardWinding(g);
         const pos = g.attributes.position;
         for (let i = 0; i < pos.count; i += 3) {
           pA.set(pos.getX(i), -pos.getZ(i), pos.getY(i));
@@ -3568,6 +3802,361 @@
       document.getElementById('treeDrawer').classList.add('hidden');
     });
 
+
+    // =========================================================================
+    // ROADMAP ITEM 3: LINEAR (N×M) & CIRCULAR (360°) PATTERNS (2D & 3D)
+    // =========================================================================
+    const patternModal = document.getElementById('patternModal');
+    document.getElementById('btnOpenPatternModal').addEventListener('click', () => patternModal.classList.remove('hidden'));
+    document.getElementById('btnPattern2D').addEventListener('click', () => patternModal.classList.remove('hidden'));
+    document.getElementById('btnClosePatternModal').addEventListener('click', () => patternModal.classList.add('hidden'));
+
+    document.querySelectorAll('.pattern-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const t = btn.dataset.ptab;
+        document.querySelectorAll('.pattern-tab-btn').forEach(b => {
+          b.className = b.dataset.ptab === t
+            ? 'pattern-tab-btn py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white'
+            : 'pattern-tab-btn py-1.5 rounded-lg text-xs font-semibold text-slate-400';
+        });
+        document.getElementById('patternLinearBox').classList.toggle('hidden', t !== 'linear');
+        document.getElementById('patternCircularBox').classList.toggle('hidden', t !== 'circular');
+      });
+    });
+
+    function createCopyWithUVOffset(du, dv) {
+      if (state.mode === 'SKETCH' || state.selectedSketchId) {
+        const srcId = state.selectedSketchId || state.editingSketchId || state.sketches[state.sketches.length - 1]?.id;
+        const sk = state.sketches.find(s => s.id === srcId);
+        if (!sk) return false;
+        const c = {
+          ...sk,
+          id: genId('sk'),
+          name: `${sk.name}`,
+          params: sk.params ? { ...sk.params, u: sk.params.u + du, v: sk.params.v + dv } : null,
+          points2D: sk.points2D ? sk.points2D.map(p => ({ u: p.u + du, v: p.v + dv })) : null
+        };
+        state.sketches.push(c);
+        return true;
+      } else {
+        const srcBody = state.bodies.find(b => b.id === state.selectedBodyId) || state.bodies[state.bodies.length - 1];
+        if (!srcBody) return false;
+        const cloneRec = orig => {
+          if (orig.type === 'group' && Array.isArray(orig.children)) {
+            return { ...orig, id: genId('grp'), name: orig.name, children: orig.children.map(cloneRec) };
+          }
+          let newSkId = orig.sketchId;
+          if (orig.sketchId) {
+            const origSk = state.sketches.find(s => s.id === orig.sketchId);
+            if (origSk) {
+              const cSk = {
+                ...origSk,
+                id: genId('sk'),
+                name: origSk.name,
+                params: origSk.params ? { ...origSk.params, u: origSk.params.u + du, v: origSk.params.v + dv } : null,
+                points2D: origSk.points2D ? origSk.points2D.map(p => ({ u: p.u + du, v: p.v + dv })) : null
+              };
+              state.sketches.push(cSk);
+              newSkId = cSk.id;
+            }
+          }
+          return {
+            ...orig,
+            id: genId('body'),
+            name: orig.name,
+            sketchId: newSkId,
+            rawGeometry: orig.rawGeometry ? orig.rawGeometry.clone() : null,
+            shiftX: orig.sketchId ? (orig.shiftX || 0) : (orig.shiftX || 0) + du,
+            shiftZ: orig.sketchId ? (orig.shiftZ || 0) : (orig.shiftZ || 0) - dv
+          };
+        };
+        state.bodies.push(cloneRec(srcBody));
+        return true;
+      }
+    }
+
+    document.getElementById('btnApplyLinearPattern').addEventListener('click', () => {
+      const nx = Math.max(1, Math.min(20, parseInt(document.getElementById('inpPatNX').value) || 1));
+      const ny = Math.max(1, Math.min(20, parseInt(document.getElementById('inpPatNY').value) || 1));
+      const sx = parseFloat(document.getElementById('inpPatStepX').value) || 15;
+      const sy = parseFloat(document.getElementById('inpPatStepY').value) || 15;
+      if (nx === 1 && ny === 1) { showToast('Укажите количество > 1'); return; }
+      pushHistory();
+      let added = 0;
+      for (let ix = 0; ix < nx; ix++) {
+        for (let iy = 0; iy < ny; iy++) {
+          if (ix === 0 && iy === 0) continue;
+          if (createCopyWithUVOffset(ix * sx, iy * sy)) added++;
+        }
+      }
+      patternModal.classList.add('hidden');
+      rebuildSketches3D();
+      rebuildBodies3D();
+      if (state.mode === 'SKETCH') drawSketchCanvas();
+      showToast(`Создан сетчатый массив (+${added} копий)`);
+    });
+
+    document.getElementById('btnApplyCircularPattern').addEventListener('click', () => {
+      const count = Math.max(2, Math.min(36, parseInt(document.getElementById('inpPatCircCount').value) || 6));
+      const rad = Math.max(1, parseFloat(document.getElementById('inpPatCircRadius').value) || 20);
+      const cx = parseFloat(document.getElementById('inpPatCircCX').value) || 0;
+      const cy = parseFloat(document.getElementById('inpPatCircCY').value) || 0;
+      pushHistory();
+
+      // Determine base position of active sketch or body
+      let baseU = cx + rad, baseV = cy;
+      const srcSkId = state.selectedSketchId || state.editingSketchId || state.sketches[state.sketches.length - 1]?.id;
+      const srcSk = state.sketches.find(s => s.id === srcSkId);
+      if (srcSk && srcSk.params) {
+        // Place the original at angle 0 on the circle first
+        srcSk.params.u = cx + rad;
+        srcSk.params.v = cy;
+        baseU = srcSk.params.u;
+        baseV = srcSk.params.v;
+      }
+
+      let added = 0;
+      for (let i = 1; i < count; i++) {
+        const ang = (i / count) * Math.PI * 2;
+        const targetU = cx + Math.cos(ang) * rad;
+        const targetV = cy + Math.sin(ang) * rad;
+        if (createCopyWithUVOffset(targetU - baseU, targetV - baseV)) added++;
+      }
+      patternModal.classList.add('hidden');
+      rebuildSketches3D();
+      rebuildBodies3D();
+      if (state.mode === 'SKETCH') drawSketchCanvas();
+      showToast(`Создан круговой массив (${count} эл. по Ø${rad * 2} мм)`);
+    });
+
+    // =========================================================================
+    // ROADMAP ITEM 4: ISO METRIC THREADS, SNAP-FIT CLIPS & PCB STANDOFFS
+    // =========================================================================
+    const hardwareModal = document.getElementById('hardwareModal');
+    document.getElementById('btnOpenHardwareModal').addEventListener('click', () => hardwareModal.classList.remove('hidden'));
+    document.getElementById('btnCloseHardwareModal').addEventListener('click', () => hardwareModal.classList.add('hidden'));
+
+    document.querySelectorAll('.hw-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const t = btn.dataset.htab;
+        document.querySelectorAll('.hw-tab-btn').forEach(b => {
+          b.className = b.dataset.htab === t
+            ? 'hw-tab-btn py-1.5 rounded-lg text-[11px] font-semibold bg-amber-600 text-white'
+            : 'hw-tab-btn py-1.5 rounded-lg text-[11px] font-semibold text-slate-400';
+        });
+        document.getElementById('hwThreadBox').classList.toggle('hidden', t !== 'thread');
+        document.getElementById('hwSnapfitBox').classList.toggle('hidden', t !== 'snapfit');
+        document.getElementById('hwStandoffBox').classList.toggle('hidden', t !== 'standoff');
+      });
+    });
+
+    const ISO_THREADS = {
+      M4:  { d: 4.0,  pitch: 0.7,  nutS: 7.0  },
+      M5:  { d: 5.0,  pitch: 0.8,  nutS: 8.0  },
+      M6:  { d: 6.0,  pitch: 1.0,  nutS: 10.0 },
+      M8:  { d: 8.0,  pitch: 1.25, nutS: 13.0 },
+      M10: { d: 10.0, pitch: 1.5,  nutS: 17.0 },
+      M12: { d: 12.0, pitch: 1.75, nutS: 19.0 }
+    };
+
+    // Generates a watertight 3D helical ISO thread mesh (external bolt/stud or internal hex nut)
+    function buildISOThreadGeometry(specKey, kind, lengthMm, clearanceMm) {
+      const spec = ISO_THREADS[specKey] || ISO_THREADS.M6;
+      const P = spec.pitch;
+      const H = 0.54 * P; // 60-degree ISO thread tooth height
+      const segsPerTurn = 28;
+      const zSteps = Math.max(12, Math.round((lengthMm / P) * 8));
+      const dz = lengthMm / zSteps;
+
+      // Radius helper at angle theta and height z: ISO 60° triangular wave along helix (theta - 2*PI*z/P)
+      const threadWave = (theta, z) => {
+        const phase = ((theta / (Math.PI * 2)) - (z / P)) % 1;
+        const norm = phase < 0 ? phase + 1 : phase;
+        // Symmetric triangle wave in [0, 1] with flat crests
+        const tri = 1 - Math.abs(2 * norm - 1);
+        return Math.min(0.88, Math.max(0.12, tri));
+      };
+
+      const verts = [];
+      const pushTri = (a, b, c) => { verts.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z); };
+
+      if (kind === 'bolt') {
+        const rMajor = spec.d / 2 - clearanceMm / 2;
+        const rMinor = rMajor - H;
+        const rings = [];
+        for (let iz = 0; iz <= zSteps; iz++) {
+          const z = iz * dz;
+          // Chamfer lead-in at top & bottom 0.6*P
+          const lead = Math.min(1, z / (0.6 * P), (lengthMm - z) / (0.6 * P));
+          const ring = [];
+          for (let is = 0; is < segsPerTurn; is++) {
+            const th = (is / segsPerTurn) * Math.PI * 2;
+            const r = rMinor + lead * H * threadWave(th, z);
+            ring.push({ x: Math.cos(th) * r, y: z, z: -Math.sin(th) * r });
+          }
+          rings.push(ring);
+        }
+        for (let iz = 0; iz < zSteps; iz++) {
+          const r0 = rings[iz], r1 = rings[iz + 1];
+          for (let is = 0; is < segsPerTurn; is++) {
+            const j = (is + 1) % segsPerTurn;
+            pushTri(r0[is], r0[j], r1[j]);
+            pushTri(r0[is], r1[j], r1[is]);
+          }
+        }
+        // Bottom & Top Caps
+        const botC = { x: 0, y: 0, z: 0 }, topC = { x: 0, y: lengthMm, z: 0 };
+        for (let is = 0; is < segsPerTurn; is++) {
+          const j = (is + 1) % segsPerTurn;
+          pushTri(botC, rings[0][j], rings[0][is]);
+          pushTri(topC, rings[zSteps][is], rings[zSteps][j]);
+        }
+      } else {
+        // Hex Nut with internal helical ISO thread
+        const rInnerMinor = spec.d / 2 - H + clearanceMm / 2;
+        const rOuterCircum = (spec.nutS / Math.sqrt(3));
+        const innerRings = [];
+        const outerRings = [];
+        for (let iz = 0; iz <= zSteps; iz++) {
+          const z = iz * dz;
+          const iRing = [], oRing = [];
+          for (let is = 0; is < segsPerTurn; is++) {
+            const th = (is / segsPerTurn) * Math.PI * 2;
+            const rIn = rInnerMinor + H * threadWave(th, z);
+            iRing.push({ x: Math.cos(th) * rIn, y: z, z: -Math.sin(th) * rIn });
+            // Hexagonal outer profile sampled at angle th
+            const sector = (Math.PI / 3);
+            const localAng = ((th % sector) + sector) % sector - (Math.PI / 6);
+            const rOut = (spec.nutS / 2) / Math.cos(localAng);
+            oRing.push({ x: Math.cos(th) * rOut, y: z, z: -Math.sin(th) * rOut });
+          }
+          innerRings.push(iRing);
+          outerRings.push(oRing);
+        }
+        for (let iz = 0; iz < zSteps; iz++) {
+          const o0 = outerRings[iz], o1 = outerRings[iz + 1];
+          const i0 = innerRings[iz], i1 = innerRings[iz + 1];
+          for (let is = 0; is < segsPerTurn; is++) {
+            const j = (is + 1) % segsPerTurn;
+            // Outer wall
+            pushTri(o0[is], o0[j], o1[j]);
+            pushTri(o0[is], o1[j], o1[is]);
+            // Inner threaded bore (inverted winding)
+            pushTri(i0[j], i0[is], i1[j]);
+            pushTri(i0[is], i1[is], i1[j]);
+          }
+        }
+        // Annular Top & Bottom Caps connecting outer hex to inner thread
+        for (let is = 0; is < segsPerTurn; is++) {
+          const j = (is + 1) % segsPerTurn;
+          // Bottom (y=0)
+          pushTri(outerRings[0][is], innerRings[0][is], innerRings[0][j]);
+          pushTri(outerRings[0][is], innerRings[0][j], outerRings[0][j]);
+          // Top (y=lengthMm)
+          pushTri(outerRings[zSteps][is], innerRings[zSteps][j], innerRings[zSteps][is]);
+          pushTri(outerRings[zSteps][is], outerRings[zSteps][j], innerRings[zSteps][j]);
+        }
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+      geo.computeVertexNormals();
+      geo.computeBoundingBox();
+      return geo;
+    }
+
+    document.getElementById('btnBuildISOThread').addEventListener('click', () => {
+      const specKey = document.getElementById('selThreadSpec').value;
+      const kind = document.getElementById('selThreadKind').value;
+      const len = Math.max(3, parseFloat(document.getElementById('inpThreadLen').value) || 12);
+      const clr = Math.max(0, parseFloat(document.getElementById('inpThreadClearance').value) || 0.2);
+      pushHistory();
+      const geo = buildISOThreadGeometry(specKey, kind, len, clr);
+      const body = {
+        id: genId('thr'),
+        name: `${kind === 'bolt' ? 'Резьба' : 'Гайка'} ${specKey}×${len}`,
+        type: 'imported', operation: 'add', plane: 'XY', offset: 0,
+        depth: len, direction: 'forward', edgeMode: 'none', edgeAmount: 0, faceTarget: 'top', draftAngle: 0,
+        rawGeometry: geo
+      };
+      state.bodies.push(body);
+      hardwareModal.classList.add('hidden');
+      selectBody(body.id, 'Верх (+Z)', 'top');
+      showToast(`Добавлена 3D-резьба ${specKey} (зазор ${clr} мм)`);
+    });
+
+    // Cantilever Snap-Fit Clip Generator
+    document.getElementById('btnBuildSnapFit').addEventListener('click', () => {
+      const L = Math.max(5, parseFloat(document.getElementById('inpSnapLen').value) || 12);
+      const W = Math.max(3, parseFloat(document.getElementById('inpSnapWidth').value) || 8);
+      const T = Math.max(1.0, parseFloat(document.getElementById('inpSnapThick').value) || 1.8);
+      const Hk = Math.max(0.6, parseFloat(document.getElementById('inpSnapHook').value) || 1.5);
+      pushHistory();
+
+      // Side profile of a cantilever snap-fit latch with root fillet & 35° entry ramp
+      const pts2D = [
+        { u: -T / 2 - 0.8, v: 0 },
+        { u: T / 2 + 0.8,  v: 0 },
+        { u: T / 2,        v: 1.5 },
+        { u: T / 2,        v: L - 3.2 },
+        { u: T / 2 + Hk,   v: L - 2.2 },
+        { u: T / 2,        v: L },
+        { u: -T / 2,       v: L },
+        { u: -T / 2,       v: 1.5 }
+      ];
+      const sk = {
+        id: genId('sk'),
+        sessionId: genId('sess'),
+        name: `Профиль защёлки ${L}мм`,
+        plane: 'XZ', offset: 0, shapeType: 'poly',
+        params: { u: 0, v: L / 2, w: T + Hk, h: L },
+        points2D: pts2D
+      };
+      state.sketches.push(sk);
+      const body = {
+        id: genId('snap'),
+        name: `Защёлка Snap-Fit ${W}×${L}`,
+        type: 'extrude', operation: 'add', sketchId: sk.id,
+        plane: 'XZ', offset: 0, depth: W, direction: 'both',
+        edgeMode: 'none', edgeAmount: 0, faceTarget: 'top', draftAngle: 0
+      };
+      state.bodies.push(body);
+      hardwareModal.classList.add('hidden');
+      selectBody(body.id, 'Защёлка', 'top');
+      showToast(`Добавлена защёлка Snap-Fit (${W}×${L} мм)`);
+    });
+
+    // Reinforced PCB Standoff with outer root fillet & screw hole
+    document.getElementById('btnBuildStandoff').addEventListener('click', () => {
+      const od = Math.max(3, parseFloat(document.getElementById('inpStandoffOD').value) || 6.0);
+      const id = Math.max(1, parseFloat(document.getElementById('inpStandoffID').value) || 2.8);
+      const h = Math.max(2, parseFloat(document.getElementById('inpStandoffH').value) || 8.0);
+      const fil = Math.max(0, parseFloat(document.getElementById('inpStandoffFillet').value) || 1.5);
+      pushHistory();
+
+      const sess = genId('sess');
+      const skOuter = { id: genId('sk'), sessionId: sess, name: `Стойка Ø${od}`, plane: 'XY', offset: 0, shapeType: 'circle', params: { u: 0, v: 0, w: od, h: od } };
+      const skHole  = { id: genId('sk'), sessionId: sess, name: `Отв. Ø${id}`,   plane: 'XY', offset: 0, shapeType: 'circle', params: { u: 0, v: 0, w: id, h: id } };
+      state.sketches.push(skOuter, skHole);
+
+      const bOuter = {
+        id: genId('body'), name: `Стойка PCB Ø${od}×${h}`,
+        type: 'extrude', operation: 'add', sketchId: skOuter.id,
+        plane: 'XY', offset: 0, depth: h, direction: 'forward',
+        edgeMode: fil > 0 ? 'outer_fillet' : 'none', edgeAmount: fil, faceTarget: 'bottom', draftAngle: 0
+      };
+      const bCut = {
+        id: genId('body'), name: `Канал винта Ø${id}`,
+        type: 'extrude', operation: 'cut', sketchId: skHole.id,
+        plane: 'XY', offset: 0, depth: h, direction: 'forward',
+        edgeMode: 'none', edgeAmount: 0, faceTarget: 'top', draftAngle: 0
+      };
+      state.bodies.push(bOuter, bCut);
+      hardwareModal.classList.add('hidden');
+      selectBody(bOuter.id, 'Низ (-Z)', 'bottom');
+      showToast(`Добавлена стойка PCB Ø${od}×${h} с галтелью ${fil} мм`);
+    });
+
     const samplesModal = document.getElementById('samplesModal');
     document.getElementById('btnOpenSamples').addEventListener('click', () => samplesModal.classList.remove('hidden'));
     document.getElementById('btnCloseSamples').addEventListener('click', () => samplesModal.classList.add('hidden'));
@@ -3875,12 +4464,22 @@
       showToast('Последний проект восстановлен');
     }
     updateUndoButtonUI();
-    window.addEventListener('resize', () => {
-      camera.aspect = viewport.clientWidth / viewport.clientHeight;
+    function syncViewportSize() {
+      const w = Math.max(1, viewport.clientWidth);
+      const h = Math.max(1, viewport.clientHeight);
+      camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+      renderer.setSize(w, h);
       resizeSketchCanvas();
-    });
+    }
+    window.addEventListener('resize', syncViewportSize);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncViewportSize);
+    }
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => syncViewportSize());
+      ro.observe(viewport);
+    }
     window.onload = function animate() {
       requestAnimationFrame(animate);
       controls.update();
