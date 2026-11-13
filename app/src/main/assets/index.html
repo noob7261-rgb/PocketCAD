@@ -26,6 +26,32 @@
     <span class="text-xs font-bold text-slate-200">Вернуть меню</span>
   </button>
 
+  <!-- COMPACT COLLAPSIBLE ZEN QUICK-TRANSFORM MENU (VISIBLE IN FULLSCREEN LOGO VIEW) -->
+  <div id="zenQuickMenu" class="hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-md bg-[#141925]/90 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+    <button id="btnCollapseZenMenu" class="w-full py-1.5 px-3 flex items-center justify-between text-[11px] text-slate-300 hover:bg-white/5">
+      <span class="font-semibold text-slate-200">Быстрые операции (Просмотр)</span>
+      <span id="lblCollapseZenMenu" class="text-slate-400">▼ Свернуть</span>
+    </button>
+    <div id="zenQuickMenuBody" class="px-2.5 pb-2.5 pt-1 grid grid-cols-4 gap-1.5">
+      <button id="btnZenMirrorH" class="py-2 px-1 rounded-xl bg-white/5 hover:bg-white/15 active:scale-95 border border-white/10 text-[11px] font-semibold text-slate-200 flex flex-col items-center gap-0.5">
+        <span class="text-blue-400 text-sm">⇄</span>
+        <span>Отзерк. Г</span>
+      </button>
+      <button id="btnZenMirrorV" class="py-2 px-1 rounded-xl bg-white/5 hover:bg-white/15 active:scale-95 border border-white/10 text-[11px] font-semibold text-slate-200 flex flex-col items-center gap-0.5">
+        <span class="text-emerald-400 text-sm">⇅</span>
+        <span>Отзерк. В</span>
+      </button>
+      <button id="btnZenFlip" class="py-2 px-1 rounded-xl bg-white/5 hover:bg-white/15 active:scale-95 border border-white/10 text-[11px] font-semibold text-slate-200 flex flex-col items-center gap-0.5">
+        <span class="text-amber-400 text-sm">⇵</span>
+        <span>Переверн.</span>
+      </button>
+      <button id="btnZenRotate90" class="py-2 px-1 rounded-xl bg-white/5 hover:bg-white/15 active:scale-95 border border-white/10 text-[11px] font-semibold text-slate-200 flex flex-col items-center gap-0.5">
+        <span class="text-purple-400 text-sm">↻</span>
+        <span>Поверн. 90°</span>
+      </button>
+    </div>
+  </div>
+
   <!-- NATIVE ANDROID-STYLE APP BAR + COLLAPSIBLE STEPPER -->
   <header id="mainHeader" class="bg-[#121620]/95 backdrop-blur-xl border-b border-white/10 shrink-0 z-30">
     <div class="h-12 px-3 flex items-center justify-between gap-2">
@@ -43,6 +69,11 @@
         <button id="btnUndo" disabled class="bg-white/5 hover:bg-white/10 active:scale-95 disabled:opacity-35 disabled:pointer-events-none text-slate-200 border border-white/10 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition" title="Отменить">
           <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
           <span class="hidden sm:inline">Отмена</span>
+        </button>
+
+        <button id="btnRefreshScene" class="bg-white/5 hover:bg-white/10 active:scale-95 text-slate-200 border border-white/10 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition" title="Пересчитать и обновить 3D-модель">
+          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <span class="hidden lg:inline">Обновить</span>
         </button>
 
         <label for="stlFileInput" class="cursor-pointer bg-white/5 hover:bg-white/10 active:scale-95 text-slate-200 border border-white/10 px-2.5 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition" title="Импорт STL">
@@ -225,9 +256,10 @@
             </div>
 
             <div class="grid grid-cols-2 gap-2">
-              <div class="grid grid-cols-2 gap-1 bg-black/30 p-1 rounded-xl">
-                <button id="btnOpExtrudeAdd" class="py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-semibold">+ Выдавить</button>
-                <button id="btnOpExtrudeCut" class="py-1.5 rounded-lg text-slate-300 text-[11px] font-semibold">− Вырез</button>
+              <div class="grid grid-cols-3 gap-1 bg-black/30 p-1 rounded-xl">
+                <button id="btnOpExtrudeAdd" class="py-1.5 rounded-lg bg-blue-600 text-white text-[10px] font-semibold">+ Тело</button>
+                <button id="btnOpExtrudeCut" class="py-1.5 rounded-lg text-slate-300 text-[10px] font-semibold">− Вычет</button>
+                <button id="btnOpExtrudeMutual" class="py-1.5 rounded-lg text-slate-300 text-[10px] font-semibold" title="Вырезать зону самопересечения из обеих моделей">✕ Пересеч.</button>
               </div>
               <div class="grid grid-cols-3 gap-1 bg-black/30 p-1 rounded-xl">
                 <button data-dir="forward" class="ext-dir-btn py-1.5 rounded-lg bg-blue-600 text-white text-[10px] font-semibold">+ Вперёд</button>
@@ -279,10 +311,11 @@
             <!-- Tab 1: SPECIFIC FACE TARGETING + 0.1 / 1 / 10 mm STEP -->
             <div id="btabEdge" class="space-y-2">
               <!-- Operation Mode + Exact Face Target Selector -->
-              <div class="grid grid-cols-3 gap-1 bg-black/30 p-1 rounded-xl">
+              <div class="grid grid-cols-4 gap-1 bg-black/30 p-1 rounded-xl">
                 <button data-edgemode="none" class="edge-mode-btn py-1 rounded-lg text-[10px] font-semibold bg-blue-600 text-white">Прямая</button>
-                <button data-edgemode="fillet" class="edge-mode-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Скругление</button>
+                <button data-edgemode="fillet" class="edge-mode-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Скругл.</button>
                 <button data-edgemode="chamfer" class="edge-mode-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Фаска</button>
+                <button data-edgemode="outer_fillet" class="edge-mode-btn py-1 rounded-lg text-[10px] font-semibold text-amber-300" title="Внешняя галтель усиления в месте стыка деталей">Галтель</button>
               </div>
 
               <!-- Specific Face Selector (Can tap face on 3D model OR tap button here) -->
@@ -570,6 +603,7 @@
       pendingExtrudeOp: 'add',
       pendingExtrudeDir: 'forward',
       editingSketchId: null,
+      currentSketchSessionId: null,
 
       dragModeActive: false,
       dragTargetType: null,
@@ -639,6 +673,13 @@
     }
 
     document.getElementById('btnUndo').addEventListener('click', performUndo);
+    document.getElementById('btnRefreshScene').addEventListener('click', () => {
+      rebuildSketches3D();
+      rebuildBodies3D();
+      updateBottomContextPanel();
+      if (state.mode === 'SKETCH') drawSketchCanvas();
+      showToast('Модель пересчитана и обновлена');
+    });
     document.getElementById('btnUndo2D').addEventListener('click', performUndo);
 
     let nextId = 1;
@@ -695,6 +736,7 @@
       document.getElementById('floatingTopControls').classList.toggle('hidden', enabled);
       document.getElementById('bottomDockWrapper').classList.toggle('hidden', enabled);
       document.getElementById('btnLogoRestore').classList.toggle('hidden', !enabled);
+      document.getElementById('zenQuickMenu').classList.toggle('hidden', !enabled);
       setTimeout(() => {
         camera.aspect = viewport.clientWidth / viewport.clientHeight;
         camera.updateProjectionMatrix();
@@ -704,6 +746,33 @@
 
     document.getElementById('btnLogoZen').addEventListener('click', () => setZenMode(true));
     document.getElementById('btnLogoRestore').addEventListener('click', () => setZenMode(false));
+
+    let zenMenuCollapsed = false;
+    document.getElementById('btnCollapseZenMenu').addEventListener('click', () => {
+      zenMenuCollapsed = !zenMenuCollapsed;
+      document.getElementById('zenQuickMenuBody').classList.toggle('hidden', zenMenuCollapsed);
+      document.getElementById('lblCollapseZenMenu').textContent = zenMenuCollapsed ? '▲ Развернуть' : '▼ Свернуть';
+    });
+
+    function applyZenTransform(fn, msg) {
+      const targets = state.selectedBodyId
+        ? state.bodies.filter(b => b.id === state.selectedBodyId)
+        : state.bodies.filter(b => b.operation !== 'cut');
+      if (targets.length === 0) { showToast('Нет моделей для преобразования'); return; }
+      pushHistory();
+      targets.forEach(b => {
+        if (!b.postTransforms) b.postTransforms = { mirrorX: false, mirrorZ: false, flipUpsideDown: false, rotY90: 0 };
+        fn(b.postTransforms);
+      });
+      rebuildBodies3D();
+      showToast(msg);
+    }
+
+    document.getElementById('btnZenMirrorH').addEventListener('click', () => applyZenTransform(pt => { pt.mirrorX = !pt.mirrorX; }, 'Отзеркалено горизонтально'));
+    document.getElementById('btnZenMirrorV').addEventListener('click', () => applyZenTransform(pt => { pt.mirrorZ = !pt.mirrorZ; }, 'Отзеркалено вертикально'));
+    document.getElementById('btnZenFlip').addEventListener('click', () => applyZenTransform(pt => { pt.flipUpsideDown = !pt.flipUpsideDown; }, 'Модель перевёрнута на стол'));
+    document.getElementById('btnZenRotate90').addEventListener('click', () => applyZenTransform(pt => { pt.rotY90 = (pt.rotY90 + 1) % 4; }, 'Повёрнуто на 90°'));
+
 
     document.getElementById('btnToggleStepper').addEventListener('click', e => {
       state.stepperCollapsed = !state.stepperCollapsed;
@@ -993,7 +1062,8 @@
         pts3d.push(pts3d[0].clone());
 
         const isDraggingThis = state.dragModeActive && state.dragTargetType === 'sketch' && state.dragTargetId === sk.id;
-        const isSel = sk.id === state.selectedSketchId;
+        const activeSk = state.sketches.find(s => s.id === state.selectedSketchId);
+        const isSel = sk.id === state.selectedSketchId || (activeSk && activeSk.sessionId && sk.sessionId === activeSk.sessionId);
         const color = isDraggingThis ? 0xf59e0b : (isSel ? 0xfbbf24 : 0x38bdf8);
         sketches3DGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts3d), new THREE.LineBasicMaterial({ color })));
 
@@ -1031,6 +1101,397 @@
       return cuts;
     }
 
+    // Clean watertight per-face geometry (never distorts whole body; supports inner fillet/chamfer AND outer root fillet for 3D print joints!)
+    function buildCleanLayeredExtrude(sketch, depth, edgeMode, edgeAmt, faceTarget, draftDeg, cutHoles) {
+      const isRect = sketch && sketch.shapeType === 'rect';
+      const isSideFace = ['left', 'right', 'front', 'back'].includes(faceTarget);
+
+      // 1. SIDE FACE (left/right/front/back) on a rectangle: reorient ONLY that face to +Z, apply operation ONLY to that face, and rotate back!
+      if (isRect && isSideFace && (!cutHoles || cutHoles.length === 0)) {
+        const w = sketch.params.w, h = sketch.params.h;
+        const cu = sketch.params.u, cv = sketch.params.v;
+        let tmpW = w, tmpH = depth, tmpDepth = h;
+        if (faceTarget === 'left' || faceTarget === 'right') {
+          tmpW = h; tmpH = depth; tmpDepth = w;
+        }
+        const tmpSketch = { shapeType: 'rect', params: { u: 0, v: 0, w: tmpW, h: tmpH } };
+        const tmpGeo = buildCleanLayeredExtrude(tmpSketch, tmpDepth, edgeMode, edgeAmt, 'top', draftDeg, []);
+        const pos = tmpGeo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const lx = pos.getX(i), ly = pos.getY(i), lz = pos.getZ(i);
+          let ox = 0, oy = 0, oz = 0;
+          if (faceTarget === 'right') { ox = cu - w / 2 + lz; oy = cv + lx; oz = ly + depth / 2; }
+          else if (faceTarget === 'left') { ox = cu + w / 2 - lz; oy = cv - lx; oz = ly + depth / 2; }
+          else if (faceTarget === 'back') { ox = cu + lx; oy = cv - h / 2 + lz; oz = ly + depth / 2; }
+          else { ox = cu - lx; oy = cv + h / 2 - lz; oz = ly + depth / 2; }
+          pos.setXYZ(i, ox, oy, oz);
+        }
+        pos.needsUpdate = true;
+        tmpGeo.computeVertexNormals();
+        return tmpGeo;
+      }
+
+      const rawPts = generate2DPointsForSketch(sketch, 0);
+      if (rawPts.length < 3) return new THREE.BoxGeometry(10, 10, 10);
+
+      // 2. BOTH (Все грани) with no outer_fillet: use ExtrudeGeometry
+      if (faceTarget === 'both' && edgeMode !== 'outer_fillet') {
+        const useBevel = edgeMode !== 'none' && edgeAmt > 0.05;
+        const insetPts = generate2DPointsForSketch(sketch, useBevel ? edgeAmt : 0);
+        const shape = new THREE.Shape(insetPts.map(p => new THREE.Vector2(p.u, p.v)));
+        (cutHoles || []).forEach(hp => {
+          if (hp.length >= 3) shape.holes.push(new THREE.Path(hp.slice().reverse().map(p => new THREE.Vector2(p.u, p.v))));
+        });
+        const effD = Math.max(0.5, depth - (useBevel ? edgeAmt * 2 : 0));
+        const g = new THREE.ExtrudeGeometry(shape, {
+          steps: 8, depth: effD, bevelEnabled: useBevel,
+          bevelThickness: useBevel ? edgeAmt : 0, bevelSize: useBevel ? edgeAmt : 0,
+          bevelSegments: edgeMode === 'fillet' ? 6 : 1
+        });
+        if (useBevel) g.translate(0, 0, edgeAmt);
+        if (Math.abs(draftDeg) > 0.01) {
+          const tanA = Math.tan((Math.abs(draftDeg) * Math.PI) / 180);
+          const cU = sketch.params ? sketch.params.u : 0, cV = sketch.params ? sketch.params.v : 0;
+          const pos = g.attributes.position;
+          for (let i = 0; i < pos.count; i++) {
+            const z = pos.getZ(i);
+            const taperZ = draftDeg > 0 ? z : (depth - z);
+            const sh = shiftVertexInwardClean(pos.getX(i), pos.getY(i), cU, cV, sketch, taperZ * tanA);
+            pos.setX(i, sh.x); pos.setY(i, sh.y);
+          }
+          pos.needsUpdate = true;
+        }
+        g.computeVertexNormals();
+        return g;
+      }
+
+      // 3. SINGLE FACE (top or bottom): Clean Watertight Lofted Mesh (supports inner fillet, chamfer, AND outward joint root fillet 'outer_fillet'!)
+      const hasEdge = edgeMode !== 'none' && edgeAmt > 0.05;
+      const isOuter = edgeMode === 'outer_fillet';
+      const segs = hasEdge ? ((edgeMode === 'fillet' || isOuter) ? 6 : 1) : 0;
+      const tanDraft = Math.abs(draftDeg) > 0.01 ? Math.tan((Math.abs(draftDeg) * Math.PI) / 180) : 0;
+
+      const slices = [];
+      const addSlice = (zVal, edgeInset) => {
+        const taperZ = draftDeg > 0 ? zVal : (draftDeg < 0 ? (depth - zVal) : 0);
+        const totalInset = edgeInset + taperZ * tanDraft;
+        // Negative totalInset expands outward (used for outer_fillet joint reinforcement!)
+        slices.push({ z: zVal, pts: generate2DPointsForSketch(sketch, totalInset) });
+      };
+
+      const targetEnd = (faceTarget === 'bottom') ? 'bottom' : 'top';
+
+      if (!hasEdge) {
+        addSlice(0, 0);
+        addSlice(depth, 0);
+      } else if (isOuter) {
+        // OUTWARD CONCAVE ROOT FILLET (Галтель усиления в месте стыка): flares OUTWARD smoothly at the selected face!
+        if (targetEnd === 'top' || faceTarget === 'both') {
+          addSlice(0, 0);
+          addSlice(depth - edgeAmt, 0);
+          for (let sIdx = 1; sIdx <= segs; sIdx++) {
+            const t = sIdx / segs; // 0 -> 1
+            const ang = t * (Math.PI / 2);
+            const zVal = (depth - edgeAmt) + t * edgeAmt;
+            // Concave flare outward: negative inset from 0 to -edgeAmt
+            const outwardFlare = -(1 - Math.cos(ang)) * edgeAmt;
+            addSlice(zVal, outwardFlare);
+          }
+        } else { // 'bottom'
+          for (let sIdx = 0; sIdx < segs; sIdx++) {
+            const t = sIdx / segs;
+            const ang = (1 - t) * (Math.PI / 2);
+            const zVal = t * edgeAmt;
+            const outwardFlare = -(1 - Math.cos(ang)) * edgeAmt;
+            addSlice(zVal, outwardFlare);
+          }
+          addSlice(edgeAmt, 0);
+          addSlice(depth, 0);
+        }
+      } else if (targetEnd === 'top') {
+        addSlice(0, 0);
+        addSlice(depth - edgeAmt, 0);
+        for (let sIdx = 1; sIdx <= segs; sIdx++) {
+          const t = sIdx / segs;
+          const ang = t * (Math.PI / 2);
+          const zVal = (depth - edgeAmt) + (edgeMode === 'fillet' ? Math.sin(ang) * edgeAmt : t * edgeAmt);
+          const ins = edgeMode === 'fillet' ? (1 - Math.cos(ang)) * edgeAmt : t * edgeAmt;
+          addSlice(zVal, ins);
+        }
+      } else { // 'bottom'
+        for (let sIdx = 0; sIdx < segs; sIdx++) {
+          const t = sIdx / segs;
+          const ang = (1 - t) * (Math.PI / 2);
+          const zVal = edgeMode === 'fillet' ? (edgeAmt - Math.sin(ang) * edgeAmt) : t * edgeAmt;
+          const ins = edgeMode === 'fillet' ? (1 - Math.cos(ang)) * edgeAmt : (1 - t) * edgeAmt;
+          addSlice(zVal, ins);
+        }
+        addSlice(edgeAmt, 0);
+        addSlice(depth, 0);
+      }
+
+      const verts = [];
+      const pushTri = (a, b, c) => {
+        verts.push(a.u, a.v, a.z, b.u, b.v, b.z, c.u, c.v, c.z);
+      };
+
+      for (let k = 0; k < slices.length - 1; k++) {
+        const s0 = slices[k], s1 = slices[k + 1];
+        const n = s0.pts.length;
+        for (let i = 0; i < n; i++) {
+          const j = (i + 1) % n;
+          pushTri(
+            { u: s0.pts[i].u, v: s0.pts[i].v, z: s0.z },
+            { u: s0.pts[j].u, v: s0.pts[j].v, z: s0.z },
+            { u: s1.pts[j].u, v: s1.pts[j].v, z: s1.z }
+          );
+          pushTri(
+            { u: s0.pts[i].u, v: s0.pts[i].v, z: s0.z },
+            { u: s1.pts[j].u, v: s1.pts[j].v, z: s1.z },
+            { u: s1.pts[i].u, v: s1.pts[i].v, z: s1.z }
+          );
+        }
+      }
+
+      // Caps (also support cutHoles on top/bottom caps!)
+      const buildCapTris = (slice, flip) => {
+        const sh = new THREE.Shape(slice.pts.map(p => new THREE.Vector2(p.u, p.v)));
+        (cutHoles || []).forEach(hp => {
+          if (hp.length >= 3) sh.holes.push(new THREE.Path(hp.slice().reverse().map(p => new THREE.Vector2(p.u, p.v))));
+        });
+        const cap = new THREE.ShapeGeometry(sh);
+        const pos = cap.attributes.position, idx = cap.index;
+        if (idx) {
+          for (let i = 0; i < idx.count; i += 3) {
+            const i0 = idx.getX(i), i1 = idx.getX(flip ? i + 2 : i + 1), i2 = idx.getX(flip ? i + 1 : i + 2);
+            verts.push(pos.getX(i0), pos.getY(i0), slice.z, pos.getX(i1), pos.getY(i1), slice.z, pos.getX(i2), pos.getY(i2), slice.z);
+          }
+        }
+      };
+      buildCapTris(slices[0], true);
+      buildCapTris(slices[slices.length - 1], false);
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+
+    // =========================================================================
+    // COMPACT 3D BSP CSG ENGINE (REAL 3D SUBTRACT FROM ANY FACE / PLANE)
+    // =========================================================================
+    class CSGPlane {
+      constructor(normal, w) { this.normal = normal; this.w = w; }
+      clone() { return new CSGPlane(this.normal.clone(), this.w); }
+      flip() { this.normal.negate(); this.w = -this.w; }
+      static fromPoints(a, b, c) {
+        const n = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a)).normalize();
+        return new CSGPlane(n, n.dot(a));
+      }
+      splitPolygon(polygon, coplanarFront, coplanarBack, front, back) {
+        const EPS = 1e-4;
+        let polygonType = 0;
+        const types = [];
+        for (let i = 0; i < polygon.vertices.length; i++) {
+          const t = this.normal.dot(polygon.vertices[i]) - this.w;
+          const type = t < -EPS ? 2 : (t > EPS ? 1 : 0);
+          polygonType |= type;
+          types.push(type);
+        }
+        if (polygonType === 0) {
+          (this.normal.dot(polygon.plane.normal) > 0 ? coplanarFront : coplanarBack).push(polygon);
+        } else if (polygonType === 1) {
+          front.push(polygon);
+        } else if (polygonType === 2) {
+          back.push(polygon);
+        } else {
+          const f = [], b = [];
+          for (let i = 0; i < polygon.vertices.length; i++) {
+            const j = (i + 1) % polygon.vertices.length;
+            const ti = types[i], tj = types[j];
+            const vi = polygon.vertices[i], vj = polygon.vertices[j];
+            if (ti !== 2) f.push(vi);
+            if (ti !== 1) b.push(ti !== 2 ? vi.clone() : vi);
+            if ((ti | tj) === 3) {
+              const t = (this.w - this.normal.dot(vi)) / this.normal.dot(new THREE.Vector3().subVectors(vj, vi));
+              const v = new THREE.Vector3().lerpVectors(vi, vj, t);
+              f.push(v);
+              b.push(v.clone());
+            }
+          }
+          if (f.length >= 3) front.push(new CSGPolygon(f));
+          if (b.length >= 3) back.push(new CSGPolygon(b));
+        }
+      }
+    }
+
+    class CSGPolygon {
+      constructor(vertices) {
+        this.vertices = vertices;
+        this.plane = CSGPlane.fromPoints(vertices[0], vertices[1], vertices[2]);
+      }
+      clone() { return new CSGPolygon(this.vertices.map(v => v.clone())); }
+      flip() { this.vertices.reverse(); this.plane.flip(); }
+    }
+
+    class CSGBSPNode {
+      constructor(polygons) {
+        this.plane = null; this.front = null; this.back = null; this.polygons = [];
+        if (polygons && polygons.length) this.build(polygons);
+      }
+      clone() {
+        const node = new CSGBSPNode();
+        node.plane = this.plane && this.plane.clone();
+        node.front = this.front && this.front.clone();
+        node.back = this.back && this.back.clone();
+        node.polygons = this.polygons.map(p => p.clone());
+        return node;
+      }
+      invert() {
+        for (let i = 0; i < this.polygons.length; i++) this.polygons[i].flip();
+        if (this.plane) this.plane.flip();
+        if (this.front) this.front.invert();
+        if (this.back) this.back.invert();
+        const tmp = this.front; this.front = this.back; this.back = tmp;
+      }
+      clipPolygons(polygons) {
+        if (!this.plane) return polygons.slice();
+        let front = [], back = [];
+        for (let i = 0; i < polygons.length; i++) {
+          this.plane.splitPolygon(polygons[i], front, back, front, back);
+        }
+        if (this.front) front = this.front.clipPolygons(front);
+        back = this.back ? this.back.clipPolygons(back) : [];
+        return front.concat(back);
+      }
+      clipTo(bsp) {
+        this.polygons = bsp.clipPolygons(this.polygons);
+        if (this.front) this.front.clipTo(bsp);
+        if (this.back) this.back.clipTo(bsp);
+      }
+      allPolygons() {
+        let polys = this.polygons.slice();
+        if (this.front) polys = polys.concat(this.front.allPolygons());
+        if (this.back) polys = polys.concat(this.back.allPolygons());
+        return polys;
+      }
+      build(polygons) {
+        if (!polygons.length) return;
+        if (!this.plane) this.plane = polygons[0].plane.clone();
+        const front = [], back = [];
+        for (let i = 0; i < polygons.length; i++) {
+          this.plane.splitPolygon(polygons[i], this.polygons, this.polygons, front, back);
+        }
+        if (front.length) {
+          if (!this.front) this.front = new CSGBSPNode();
+          this.front.build(front);
+        }
+        if (back.length) {
+          if (!this.back) this.back = new CSGBSPNode();
+          this.back.build(back);
+        }
+      }
+    }
+
+    function geometryToCSGPolygons(geom) {
+      const g = geom.index ? geom.toNonIndexed() : geom;
+      const pos = g.attributes.position;
+      const polys = [];
+      let signedVol = 0;
+      const crossVec = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i += 3) {
+        const a = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
+        const b = new THREE.Vector3(pos.getX(i + 1), pos.getY(i + 1), pos.getZ(i + 1));
+        const c = new THREE.Vector3(pos.getX(i + 2), pos.getY(i + 2), pos.getZ(i + 2));
+        const area = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a)).length();
+        if (area > 1e-6) {
+          crossVec.crossVectors(b, c);
+          signedVol += a.dot(crossVec);
+          polys.push(new CSGPolygon([a, b, c]));
+        }
+      }
+      // Guarantee outward-pointing normals regardless of plane orientation (XY/XZ/YZ)
+      if (signedVol < 0) {
+        for (let i = 0; i < polys.length; i++) polys[i].flip();
+      }
+      return polys;
+    }
+
+    function csgPolygonsToGeometry(polys) {
+      const verts = [];
+      const ab = new THREE.Vector3(), ac = new THREE.Vector3();
+      for (let i = 0; i < polys.length; i++) {
+        const v = polys[i].vertices;
+        for (let j = 2; j < v.length; j++) {
+          const a = v[0], b = v[j - 1], c = v[j];
+          ab.subVectors(b, a); ac.subVectors(c, a);
+          if (ab.cross(ac).lengthSq() > 1e-7) {
+            verts.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+          }
+        }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+      geo.computeVertexNormals();
+      geo.computeBoundingBox();
+      return geo;
+    }
+
+    function csgSubtractGeometry(solidGeo, cutterGeo) {
+      const aPolys = geometryToCSGPolygons(solidGeo);
+      const bPolys = geometryToCSGPolygons(cutterGeo);
+      if (aPolys.length === 0 || bPolys.length === 0 || aPolys.length > 3500) return solidGeo;
+      const a = new CSGBSPNode(aPolys);
+      const b = new CSGBSPNode(bPolys);
+      a.invert();
+      a.clipTo(b);
+      b.clipTo(a);
+      b.invert();
+      b.clipTo(a);
+      b.invert();
+      a.build(b.allPolygons());
+      a.invert();
+      return csgPolygonsToGeometry(a.allPolygons());
+    }
+
+    function collectAllCutBodies() {
+      const cuts = [];
+      const scan = list => list.forEach(b => {
+        if (b.type === 'group' && Array.isArray(b.children)) scan(b.children);
+        else if (b.operation === 'cut' || b.operation === 'mutual') cuts.push(b);
+      });
+      scan(state.bodies);
+      return cuts;
+    }
+
+    function collectAllSolidBodies() {
+      const solids = [];
+      const scan = list => list.forEach(b => {
+        if (b.type === 'group' && Array.isArray(b.children)) scan(b.children);
+        else if ((b.operation === 'add' || b.operation === 'mutual')) solids.push(b);
+      });
+      scan(state.bodies);
+      return solids;
+    }
+
+    function buildCutterGeometryForCSG(cutBody) {
+      const sk = state.sketches.find(s => s.id === cutBody.sketchId);
+      if (!sk) return null;
+      const d = Math.max(0.5, Number(cutBody.depth) || 10);
+      // Slight 0.08mm extension on both ends ensures clean through-cuts without coplanar z-fighting
+      const ext = 0.08;
+      const geom = buildCleanLayeredExtrude(sk, d + ext * 2, 'none', 0, 'top', 0, []);
+      let dir = cutBody.direction || 'forward';
+      let off = (Number(cutBody.offset) || 0);
+      if (dir === 'forward') off -= ext;
+      else if (dir === 'backward') off += ext;
+      orientExtrudedGeometryToPlane(geom, cutBody.plane, off, d + ext * 2, dir);
+      if (cutBody.shiftX || cutBody.shiftY || cutBody.shiftZ) geom.translate(cutBody.shiftX || 0, cutBody.shiftY || 0, cutBody.shiftZ || 0);
+      geom.computeBoundingBox();
+      return geom;
+    }
+
     function buildSingleBodyGeometry(body) {
       if (body.type === 'imported' && body.rawGeometry) {
         const geom = body.rawGeometry.clone();
@@ -1046,112 +1507,90 @@
 
       const depth = Math.max(0.5, Number(body.depth) || 10);
       const edgeMode = body.edgeMode || 'none';
-      const faceTarget = body.faceTarget || 'top'; // 'top' | 'bottom' | 'front' | 'back' | 'left' | 'right' | 'both'
-
+      const faceTarget = body.faceTarget || 'top';
       const minSketchDim = sketch.params ? Math.min(sketch.params.w || 20, sketch.params.h || 20) : 20;
-      const maxEdge = Math.min(depth * 0.4, minSketchDim * 0.4);
+      const maxEdge = edgeMode === 'outer_fillet' ? depth * 0.85 : Math.min(depth * 0.4, minSketchDim * 0.4);
       const edgeAmt = edgeMode !== 'none' ? Math.min(Math.max(0, Number(body.edgeAmount) || 0), maxEdge) : 0;
-      const bevelEnabled = edgeAmt > 0.05;
 
-      const insetPts2d = generate2DPointsForSketch(sketch, bevelEnabled ? edgeAmt : 0);
-      if (insetPts2d.length < 3) return new THREE.BoxGeometry(10, 10, 10);
-
-      const outerShape = new THREE.Shape(insetPts2d.map(p => new THREE.Vector2(p.u, p.v)));
-
+      const cutHoles = [];
       if (body.operation === 'add') {
+        const bodyPts = generate2DPointsForSketch(sketch, 0);
+        let bMinU = Infinity, bMaxU = -Infinity, bMinV = Infinity, bMaxV = -Infinity;
+        bodyPts.forEach(p => {
+          if (p.u < bMinU) bMinU = p.u; if (p.u > bMaxU) bMaxU = p.u;
+          if (p.v < bMinV) bMinV = p.v; if (p.v > bMaxV) bMaxV = p.v;
+        });
+
+        const getZRange = (bObj) => {
+          const d = Math.max(0.5, Number(bObj.depth) || 10);
+          const off = Number(bObj.offset) || 0;
+          if (bObj.direction === 'backward') return [off - d, off];
+          if (bObj.direction === 'both') return [off - d / 2, off + d / 2];
+          return [off, off + d];
+        };
+        const [bZ0, bZ1] = getZRange(body);
+
         collectCutBodiesForPlane(body.plane).forEach(cutB => {
+          const [cZ0, cZ1] = getZRange(cutB);
+          // Only apply cut hole if Z-ranges overlap
+          if (cZ1 <= bZ0 + 0.05 || cZ0 >= bZ1 - 0.05) return;
+
           const cutSk = state.sketches.find(s => s.id === cutB.sketchId);
           if (cutSk) {
-            const holePts = generate2DPointsForSketch(cutSk, 0);
-            if (holePts.length >= 3) outerShape.holes.push(new THREE.Path(holePts.reverse().map(p => new THREE.Vector2(p.u, p.v))));
+            const hp = generate2DPointsForSketch(cutSk, 0);
+            if (hp.length >= 3) {
+              // Verify all hole vertices lie strictly inside the body's 2D bounding box (prevents ShapeGeometry outside-hole artifacts!)
+              const allInside = hp.every(p => p.u > bMinU + 0.2 && p.u < bMaxU - 0.2 && p.v > bMinV + 0.2 && p.v < bMaxV - 0.2);
+              if (allInside) cutHoles.push(hp);
+            }
           }
         });
       }
 
-      const effectiveDepth = Math.max(0.5, depth - (bevelEnabled ? edgeAmt * 2 : 0));
-      const geom = new THREE.ExtrudeGeometry(outerShape, {
-        steps: 12,
-        depth: effectiveDepth,
-        bevelEnabled,
-        bevelThickness: bevelEnabled ? edgeAmt : 0,
-        bevelSize: bevelEnabled ? edgeAmt : 0,
-        bevelSegments: edgeMode === 'fillet' ? 6 : 1
-      });
-
-      const cU = sketch.params ? sketch.params.u : 0;
-      const cV = sketch.params ? sketch.params.v : 0;
-
-      if (bevelEnabled) {
-        geom.translate(0, 0, edgeAmt); // z spans [0, depth]
-
-        // Apply bevel ONLY to the selected face (top, bottom, left, right, front, back) or all ('both')
-        if (faceTarget !== 'both') {
-          geom.computeBoundingBox();
-          const bb = geom.boundingBox;
-          const maxR = Math.max((bb.max.x - bb.min.x) / 2, (bb.max.y - bb.min.y) / 2);
-          const pos = geom.attributes.position;
-
-          for (let i = 0; i < pos.count; i++) {
-            const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-            const inBottom = z < edgeAmt - 0.001;
-            const inTop = z > depth - edgeAmt + 0.001;
-            if (!inBottom && !inTop) continue;
-            if (Math.hypot(x - cU, y - cV) <= maxR * 0.25) continue;
-
-            // Determine how much bevel should be flattened back to 90° for non-selected faces
-            let keepBevel = false;
-            if (faceTarget === 'top' && inTop) keepBevel = true;
-            else if (faceTarget === 'bottom' && inBottom) keepBevel = true;
-            else if (faceTarget === 'left' && x < cU - 0.1) keepBevel = true;
-            else if (faceTarget === 'right' && x > cU + 0.1) keepBevel = true;
-            else if (faceTarget === 'front' && y < cV - 0.1) keepBevel = true;
-            else if (faceTarget === 'back' && y > cV + 0.1) keepBevel = true;
-
-            if (!keepBevel) {
-              const t = inBottom ? (edgeAmt - z) / edgeAmt : (z - (depth - edgeAmt)) / edgeAmt;
-              const pushOut = Math.max(0, edgeAmt * t);
-              if (sketch.shapeType === 'rect') {
-                const dx = x - cU, dy = y - cV;
-                // Only push out axes that are not belonging to the selected side face
-                const pushX = (faceTarget === 'left' && dx < 0) || (faceTarget === 'right' && dx > 0) ? 0 : pushOut;
-                const pushY = (faceTarget === 'front' && dy < 0) || (faceTarget === 'back' && dy > 0) ? 0 : pushOut;
-                pos.setX(i, cU + (Math.abs(dx) > 0.01 ? dx + Math.sign(dx) * pushX : dx));
-                pos.setY(i, cV + (Math.abs(dy) > 0.01 ? dy + Math.sign(dy) * pushY : dy));
-              } else {
-                const dx = x - cU, dy = y - cV, r = Math.hypot(dx, dy) || 1;
-                pos.setX(i, cU + dx * ((r + pushOut) / r));
-                pos.setY(i, cV + dy * ((r + pushOut) / r));
-              }
-            }
-          }
-          pos.needsUpdate = true;
-        }
-      }
-
-      const draftDeg = Number(body.draftAngle) || 0;
-      if (Math.abs(draftDeg) > 0.01) {
-        const tanA = Math.tan((Math.abs(draftDeg) * Math.PI) / 180);
-        geom.computeBoundingBox();
-        const bb = geom.boundingBox;
-        const maxR = Math.max((bb.max.x - bb.min.x) / 2, (bb.max.y - bb.min.y) / 2);
-        const pos = geom.attributes.position;
-        for (let i = 0; i < pos.count; i++) {
-          const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-          if (Math.hypot(x - cU, y - cV) > maxR * 0.25) {
-            const taperZ = draftDeg > 0 ? z : (depth - z);
-            const shrink = Math.min(taperZ * tanA, maxR * 0.45);
-            const shifted = shiftVertexInwardClean(x, y, cU, cV, sketch, shrink);
-            pos.setX(i, shifted.x);
-            pos.setY(i, shifted.y);
-          }
-        }
-        pos.needsUpdate = true;
-      }
-
+      let geom = buildCleanLayeredExtrude(sketch, depth, edgeMode, edgeAmt, faceTarget, Number(body.draftAngle) || 0, cutHoles);
       orientExtrudedGeometryToPlane(geom, body.plane, body.offset, depth, body.direction || 'forward');
       if (body.shiftX || body.shiftY || body.shiftZ) {
         geom.translate(body.shiftX || 0, body.shiftY || 0, body.shiftZ || 0);
-        geom.computeBoundingBox();
+      }
+      geom.computeBoundingBox();
+
+      // If operation === 'mutual', subtract every existing 'add' solid from THIS body (removes self-intersection from both!)
+      if (body.operation === 'mutual') {
+        collectAllSolidBodies().forEach(solidB => {
+          if (solidB.id === body.id) return;
+          const sSk = state.sketches.find(x => x.id === solidB.sketchId);
+          if (!sSk) return;
+          const sGeo = buildCleanLayeredExtrude(sSk, Math.max(0.5, Number(solidB.depth) || 10), 'none', 0, 'top', 0, []);
+          orientExtrudedGeometryToPlane(sGeo, solidB.plane, solidB.offset, Math.max(0.5, Number(solidB.depth) || 10), solidB.direction || 'forward');
+          if (solidB.shiftX || solidB.shiftY || solidB.shiftZ) sGeo.translate(solidB.shiftX || 0, solidB.shiftY || 0, solidB.shiftZ || 0);
+          sGeo.computeBoundingBox();
+          if (geom.boundingBox.intersectsBox(sGeo.boundingBox)) {
+            geom = csgSubtractGeometry(geom, sGeo);
+          }
+        });
+      }
+
+      // Apply real 3D CSG subtraction for any cut/mutual body that was not already applied via 2D cutHoles
+      if (body.operation === 'add') {
+        const allCuts = collectAllCutBodies();
+        allCuts.forEach(cutB => {
+          // Skip if already handled by exact co-planar 2D hole
+          const cutSk = state.sketches.find(x => x.id === cutB.sketchId);
+          if (!cutSk) return;
+          const cutGeo = buildCutterGeometryForCSG(cutB);
+          if (!cutGeo || !cutGeo.boundingBox) return;
+          if (geom.boundingBox.intersectsBox(cutGeo.boundingBox)) {
+            // Check if already in cutHoles (same plane & inside)
+            const alreadyIn2DHoles = cutB.plane === body.plane && cutHoles.some(hp => {
+              const p0 = hp[0];
+              const cPts = generate2DPointsForSketch(cutSk, 0);
+              return cPts.length === hp.length && Math.abs(cPts[0].u - p0.u) < 0.01 && Math.abs(cPts[0].v - p0.v) < 0.01;
+            });
+            if (!alreadyIn2DHoles) {
+              geom = csgSubtractGeometry(geom, cutGeo);
+            }
+          }
+        });
       }
       return geom;
     }
@@ -1214,13 +1653,53 @@
       return merged;
     }
 
+    function flipGeometryWinding(geom) {
+      const g = geom.index ? geom.toNonIndexed() : geom;
+      const pos = g.attributes.position;
+      for (let i = 0; i < pos.count; i += 3) {
+        const x1 = pos.getX(i + 1), y1 = pos.getY(i + 1), z1 = pos.getZ(i + 1);
+        pos.setXYZ(i + 1, pos.getX(i + 2), pos.getY(i + 2), pos.getZ(i + 2));
+        pos.setXYZ(i + 2, x1, y1, z1);
+      }
+      pos.needsUpdate = true;
+      g.computeVertexNormals();
+      return g;
+    }
+
+    function applyPostTransforms(geom, body) {
+      const pt = body.postTransforms;
+      if (!pt) return geom;
+      let g = geom;
+      if (pt.mirrorX) {
+        g = flipGeometryWinding(g);
+        g.scale(-1, 1, 1);
+      }
+      if (pt.mirrorZ) {
+        g = flipGeometryWinding(g);
+        g.scale(1, 1, -1);
+      }
+      if (pt.flipUpsideDown) {
+        g.rotateX(Math.PI);
+        g.computeBoundingBox();
+        g.translate(0, -g.boundingBox.min.y, 0);
+      }
+      if (pt.rotY90) {
+        g.rotateY((Math.PI / 2) * (pt.rotY90 % 4));
+      }
+      g.computeVertexNormals();
+      g.computeBoundingBox();
+      return g;
+    }
+
     function buildBodyGeometry(body) {
+      let geom;
       if (body.type === 'group' && Array.isArray(body.children)) {
         const childGeos = body.children.filter(c => c.operation !== 'cut').map(c => buildBodyGeometry(c));
-        if (childGeos.length === 0) return new THREE.BoxGeometry(10, 10, 10);
-        return mergeNonIndexedGeometries(childGeos);
+        geom = childGeos.length === 0 ? new THREE.BoxGeometry(10, 10, 10) : mergeNonIndexedGeometries(childGeos);
+      } else {
+        geom = buildSingleBodyGeometry(body);
       }
-      return buildSingleBodyGeometry(body);
+      return applyPostTransforms(geom, body);
     }
 
     // =========================================================================
@@ -1273,7 +1752,11 @@
     });
 
     function rebuildBodies3D() {
-      while (bodies3DGroup.children.length) bodies3DGroup.remove(bodies3DGroup.children[0]);
+      while (bodies3DGroup.children.length) {
+        const ch = bodies3DGroup.children[0];
+        if (ch.geometry) ch.geometry.dispose();
+        bodies3DGroup.remove(ch);
+      }
       state.bodies.forEach(body => {
         const geom = buildBodyGeometry(body);
         body.computedGeometry = geom;
@@ -1281,7 +1764,7 @@
         const isSel = body.id === state.selectedBodyId;
         const isGroup = body.type === 'group';
         const mat = body.operation === 'cut'
-          ? new THREE.MeshStandardMaterial({ color: 0xf43f5e, transparent: true, opacity: isSel ? 0.45 : 0.18 })
+          ? new THREE.MeshBasicMaterial({ color: 0xf43f5e, wireframe: true, transparent: true, opacity: isSel ? 0.6 : 0.0 })
           : new THREE.MeshStandardMaterial({
               color: isDraggingThis ? 0xf59e0b : (isSel ? (isGroup ? 0xa78bfa : 0x60a5fa) : (isGroup ? 0x8b5cf6 : 0x3b82f6)),
               roughness: 0.35, metalness: 0.15, polygonOffset: true, polygonOffsetFactor: 1
@@ -1289,8 +1772,8 @@
         const mesh = new THREE.Mesh(geom, mat);
         mesh.userData = { isBody3D: true, bodyId: body.id };
         mesh.add(new THREE.LineSegments(
-          new THREE.EdgesGeometry(geom, 20),
-          new THREE.LineBasicMaterial({ color: isDraggingThis ? 0xfef08a : (isSel ? 0xfbbf24 : (body.operation === 'cut' ? 0xfb7185 : 0x1e293b)) })
+          new THREE.EdgesGeometry(geom, 32),
+          new THREE.LineBasicMaterial({ color: isDraggingThis ? 0xfef08a : (isSel ? 0xfbbf24 : (body.operation === 'cut' ? 0xfb7185 : 0x1e293b)), transparent: body.operation === 'cut' && !isSel, opacity: body.operation === 'cut' && !isSel ? 0 : 1 })
         ));
         bodies3DGroup.add(mesh);
       });
@@ -1299,7 +1782,7 @@
     }
 
     function updateBoundingBoxReadout() {
-      const addBodies = state.bodies.filter(b => b.operation === 'add' && b.computedGeometry);
+      const addBodies = state.bodies.filter(b => ((b.operation === 'add' || b.operation === 'mutual') || b.operation === 'mutual') && b.computedGeometry);
       const el = document.getElementById('bboxValue');
       if (addBodies.length === 0) { el.textContent = '0×0×0 мм'; return; }
       const box = new THREE.Box3();
@@ -1318,7 +1801,8 @@
         return;
       }
       state.sketches.forEach(sk => {
-        const isSel = sk.id === state.selectedSketchId;
+        const activeSk = state.sketches.find(s => s.id === state.selectedSketchId);
+        const isSel = sk.id === state.selectedSketchId || (activeSk && activeSk.sessionId && sk.sessionId === activeSk.sessionId);
         const row = document.createElement('div');
         row.className = `flex items-center justify-between px-2.5 py-1.5 rounded-xl cursor-pointer border ${isSel ? 'bg-amber-500/20 border-amber-500/50 text-amber-200' : 'bg-white/5 border-white/10 text-slate-300'}`;
         row.innerHTML = `<span class="truncate">✎ ${sk.name} (${sk.plane})</span><span class="text-[10px] text-amber-300">3D→</span>`;
@@ -1372,8 +1856,11 @@
       if (state.selectedSketchId) {
         const sk = state.sketches.find(s => s.id === state.selectedSketchId);
         if (sk) {
+          const peers = sk.sessionId ? state.sketches.filter(s => s.sessionId === sk.sessionId) : [sk];
           document.getElementById('panelSketchSelected').classList.remove('hidden');
-          document.getElementById('selectedSketchLabel').textContent = `${sk.name} (${sk.plane})`;
+          document.getElementById('selectedSketchLabel').textContent = peers.length > 1
+            ? `Набор эскизов (${peers.length} фигр., ${sk.plane})`
+            : `${sk.name} (${sk.plane})`;
           updateStepperUI(3);
           return;
         }
@@ -1683,6 +2170,41 @@
     const sketchCanvas = document.getElementById('sketchCanvas');
     const sctx = sketchCanvas.getContext('2d');
 
+
+    function get3DBodyProjectionsOnActivePlane() {
+      const projs = [];
+      const scanBodies = list => list.forEach(b => {
+        if (b.type === 'group' && Array.isArray(b.children)) {
+          scanBodies(b.children);
+          return;
+        }
+        if (b.operation === 'cut') return;
+        const g = b.computedGeometry || buildBodyGeometry(b);
+        if (!g) return;
+        g.computeBoundingBox();
+        const bb = g.boundingBox;
+        let minU, maxU, minV, maxV;
+        if (state.activePlane === 'XY') {
+          minU = bb.min.x; maxU = bb.max.x;
+          minV = -bb.max.z; maxV = -bb.min.z;
+        } else if (state.activePlane === 'XZ') {
+          minU = bb.min.x; maxU = bb.max.x;
+          minV = bb.min.y; maxV = bb.max.y;
+        } else { // 'YZ'
+          minU = -bb.max.z; maxU = -bb.min.z;
+          minV = bb.min.y; maxV = bb.max.y;
+        }
+        projs.push({
+          name: b.name,
+          minU, maxU, minV, maxV,
+          cu: (minU + maxU) / 2,
+          cv: (minV + maxV) / 2
+        });
+      });
+      scanBodies(state.bodies);
+      return projs;
+    }
+
     function getReferencePoints2D(excludeSketchId = null) {
       const refs = [{ u: 0, v: 0, kind: 'origin' }];
       state.sketches.filter(s => s.plane === state.activePlane && s.id !== excludeSketchId).forEach(sk => {
@@ -1709,6 +2231,16 @@
         if (Array.isArray(sk.points2D)) {
           sk.points2D.forEach(p => refs.push({ u: p.u, v: p.v, kind: 'vertex' }));
         }
+      });
+      // Also add reference points from 3D body projections (for snapping across different planes!)
+      get3DBodyProjectionsOnActivePlane().forEach(pr => {
+        refs.push(
+          { u: pr.cu, v: pr.cv, kind: 'center' },
+          { u: pr.minU, v: pr.minV, kind: 'vertex' },
+          { u: pr.maxU, v: pr.minV, kind: 'vertex' },
+          { u: pr.maxU, v: pr.maxV, kind: 'vertex' },
+          { u: pr.minU, v: pr.maxV, kind: 'vertex' }
+        );
       });
       return refs;
     }
@@ -1785,6 +2317,9 @@
       state.activePlane = planeCode;
       state.planeOffset = offsetMm;
       state.editingSketchId = editSketchId;
+      state.currentSketchSessionId = editSketchId
+        ? (state.sketches.find(x => x.id === editSketchId)?.sessionId || genId('sess'))
+        : genId('sess');
       state.polyPoints = [];
       state.isDrawing = false;
       exitSketchDragMode(false);
@@ -1892,6 +2427,26 @@
       sctx.strokeStyle = '#10b981';
       sctx.beginPath(); sctx.moveTo(state.sketchPanX, 0); sctx.lineTo(state.sketchPanX, h); sctx.stroke();
 
+      // Draw shadows & dashed outlines of existing 3D bodies projected onto this plane
+      const bodyProjs = get3DBodyProjectionsOnActivePlane();
+      if (bodyProjs.length > 0) {
+        sctx.save();
+        bodyProjs.forEach(pr => {
+          const pMin = sketchUVToScreen(pr.minU, pr.maxV);
+          const pMax = sketchUVToScreen(pr.maxU, pr.minV);
+          const pw = pMax.x - pMin.x;
+          const ph = pMax.y - pMin.y;
+          sctx.fillStyle = 'rgba(148, 163, 184, 0.08)';
+          sctx.fillRect(pMin.x, pMin.y, pw, ph);
+          sctx.setLineDash([6, 4]);
+          sctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+          sctx.lineWidth = 1.3;
+          sctx.strokeRect(pMin.x, pMin.y, pw, ph);
+        });
+        sctx.setLineDash([]);
+        sctx.restore();
+      }
+
       state.sketches.filter(s => s.plane === state.activePlane).forEach(sk => {
         const pts = generate2DPointsForSketch(sk, 0);
         if (pts.length < 3) return;
@@ -1972,6 +2527,7 @@
       const names = { rect: 'Прямоугольник', circle: 'Круг', slot: 'Паз', poly: 'Контур' };
       const sk = {
         id: genId('sk'),
+        sessionId: state.currentSketchSessionId || genId('sess'),
         name: `${names[shapeType] || 'Эскиз'} #${state.sketches.length + 1}`,
         plane: state.activePlane,
         offset: state.planeOffset,
@@ -2282,7 +2838,7 @@
 
 
     function generateOBJBlob() {
-      const solidBodies = state.bodies.filter(b => b.operation === 'add' && b.computedGeometry);
+      const solidBodies = state.bodies.filter(b => ((b.operation === 'add' || b.operation === 'mutual') || b.operation === 'mutual') && b.computedGeometry);
       if (solidBodies.length === 0) return null;
       const lines = ['# PocketCAD 3D Export (mm, Z-up)', 'o PocketCAD_Model'];
       let vOffset = 1;
@@ -2325,7 +2881,7 @@
     }
 
     function generateSTEPBlob() {
-      const solidBodies = state.bodies.filter(b => b.operation === 'add' && b.computedGeometry);
+      const solidBodies = state.bodies.filter(b => ((b.operation === 'add' || b.operation === 'mutual') || b.operation === 'mutual') && b.computedGeometry);
       if (solidBodies.length === 0) return null;
       const ts = new Date().toISOString().slice(0, 19);
       const lines = [
@@ -2427,7 +2983,7 @@
     }
 
     function generateBinarySTLBlob() {
-      const solidBodies = state.bodies.filter(b => b.operation === 'add' && b.computedGeometry);
+      const solidBodies = state.bodies.filter(b => ((b.operation === 'add' || b.operation === 'mutual') || b.operation === 'mutual') && b.computedGeometry);
       if (solidBodies.length === 0) return null;
       let totalTriangles = 0;
       const nonIndexed = solidBodies.map(b => {
@@ -2548,7 +3104,8 @@
 
     document.getElementById('btnCancelSketch').addEventListener('click', closeSketcher);
     document.getElementById('btnFinishSketch').addEventListener('click', () => {
-      if (state.sketches.filter(s => s.plane === state.activePlane).length === 0) {
+      const sessCount = state.sketches.filter(s => s.sessionId === state.currentSketchSessionId).length;
+      if (sessCount === 0 && state.sketches.filter(s => s.plane === state.activePlane).length === 0) {
         const u = parseFloat(document.getElementById('inpSketchU').value) || 0;
         const v = parseFloat(document.getElementById('inpSketchV').value) || 0;
         const w = Math.max(0.5, parseFloat(document.getElementById('inpSketchW').value) || 40);
@@ -2572,11 +3129,31 @@
 
     function setPendingOp(op) {
       state.pendingExtrudeOp = op;
-      document.getElementById('btnOpExtrudeAdd').className = op === 'add' ? 'py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-semibold' : 'py-1.5 rounded-lg text-slate-300 text-[11px] font-semibold';
-      document.getElementById('btnOpExtrudeCut').className = op === 'cut' ? 'py-1.5 rounded-lg bg-rose-600 text-white text-[11px] font-semibold' : 'py-1.5 rounded-lg text-slate-300 text-[11px] font-semibold';
+      document.getElementById('btnOpExtrudeAdd').className = op === 'add' ? 'py-1.5 rounded-lg bg-blue-600 text-white text-[10px] font-semibold' : 'py-1.5 rounded-lg text-slate-300 text-[10px] font-semibold';
+      document.getElementById('btnOpExtrudeCut').className = op === 'cut' ? 'py-1.5 rounded-lg bg-rose-600 text-white text-[10px] font-semibold' : 'py-1.5 rounded-lg text-slate-300 text-[10px] font-semibold';
+      document.getElementById('btnOpExtrudeMutual').className = op === 'mutual' ? 'py-1.5 rounded-lg bg-amber-600 text-white text-[10px] font-semibold' : 'py-1.5 rounded-lg text-slate-300 text-[10px] font-semibold';
     }
     document.getElementById('btnOpExtrudeAdd').addEventListener('click', () => setPendingOp('add'));
-    document.getElementById('btnOpExtrudeCut').addEventListener('click', () => setPendingOp('cut'));
+    const autoDirectInward = (label) => {
+      const sk = state.sketches.find(s => s.id === state.selectedSketchId);
+      if (sk && Math.abs(sk.offset || 0) > 0.1 && state.pendingExtrudeDir === 'forward') {
+        state.pendingExtrudeDir = 'backward';
+        document.querySelectorAll('.ext-dir-btn').forEach(b => {
+          b.className = b.dataset.dir === 'backward'
+            ? 'ext-dir-btn py-1.5 rounded-lg bg-blue-600 text-white text-[10px] font-semibold'
+            : 'ext-dir-btn py-1.5 rounded-lg text-slate-300 text-[10px] font-semibold';
+        });
+        showToast(`${label}: внутрь детали (− Назад)`);
+      }
+    };
+    document.getElementById('btnOpExtrudeCut').addEventListener('click', () => {
+      setPendingOp('cut');
+      autoDirectInward('Вычитание');
+    });
+    document.getElementById('btnOpExtrudeMutual').addEventListener('click', () => {
+      setPendingOp('mutual');
+      autoDirectInward('Пересечение');
+    });
 
     document.querySelectorAll('.ext-dir-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -2603,18 +3180,38 @@
       pushHistory();
       const depth = Math.max(0.5, parseFloat(rngExt.value) || 15);
       const op = state.pendingExtrudeOp;
-      const body = {
+      const dir = state.pendingExtrudeDir || 'forward';
+      const sessionSketches = sk.sessionId
+        ? state.sketches.filter(s => s.sessionId === sk.sessionId && !state.bodies.some(b => b.sketchId === s.id))
+        : [sk];
+      const targets = sessionSketches.length > 0 ? sessionSketches : [sk];
+
+      const createdBodies = targets.map((targetSk, idx) => ({
         id: genId('body'),
-        name: `${op === 'cut' ? 'Вырез' : 'Тело'} #${state.bodies.length + 1}`,
-        type: 'extrude', operation: op, sketchId: sk.id,
-        plane: sk.plane, offset: sk.offset, depth,
-        direction: state.pendingExtrudeDir || 'forward',
+        name: `${op === 'cut' ? 'Вырез' : 'Тело'} #${state.bodies.length + idx + 1}`,
+        type: 'extrude', operation: op, sketchId: targetSk.id,
+        plane: targetSk.plane, offset: targetSk.offset, depth,
+        direction: dir,
         edgeMode: 'none', edgeAmount: 0, faceTarget: 'top', draftAngle: 0,
         shiftX: 0, shiftY: 0, shiftZ: 0
-      };
-      state.bodies.push(body);
-      selectBody(body.id, 'Верх (+Z)', 'top');
-      showToast(op === 'cut' ? 'Вырез применён' : '3D-тело создано');
+      }));
+
+      if (createdBodies.length > 1 && op === 'add') {
+        const grp = {
+          id: genId('grp'),
+          name: `Набор (${createdBodies.length} эл.)`,
+          type: 'group', operation: 'add',
+          plane: sk.plane, offset: sk.offset, depth, direction: dir,
+          edgeMode: 'none', edgeAmount: 0, faceTarget: 'top', draftAngle: 0,
+          children: createdBodies
+        };
+        state.bodies.push(grp);
+        selectBody(grp.id, 'Верх (+Z)', 'top');
+      } else {
+        state.bodies.push(...createdBodies);
+        selectBody(createdBodies[0].id, 'Верх (+Z)', 'top');
+      }
+      showToast(op === 'cut' ? `Вырез применён (${targets.length} эл.)` : `Создано 3D (${targets.length} эл.)`);
     });
 
     document.getElementById('btnDeleteSelectedSketch').addEventListener('click', () => {
@@ -2624,13 +3221,20 @@
     });
     document.getElementById('btnCloseSketchPanel').addEventListener('click', clearSelection);
 
+    function applyPropToBodyOrGroup(body, prop, val) {
+      body[prop] = val;
+      if (body.type === 'group' && Array.isArray(body.children)) {
+        body.children.forEach(c => applyPropToBodyOrGroup(c, prop, val));
+      }
+    }
+
     document.querySelectorAll('.edge-mode-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const b = state.bodies.find(x => x.id === state.selectedBodyId);
         if (!b) return;
         pushHistory();
-        b.edgeMode = btn.dataset.edgemode;
-        if (b.edgeMode !== 'none' && !b.edgeAmount) b.edgeAmount = 1.5;
+        applyPropToBodyOrGroup(b, 'edgeMode', btn.dataset.edgemode);
+        if (b.edgeMode !== 'none' && !b.edgeAmount) applyPropToBodyOrGroup(b, 'edgeAmount', 1.5);
         rebuildBodies3D();
         updateBottomContextPanel();
       });
@@ -2646,7 +3250,7 @@
         const b = state.bodies.find(x => x.id === state.selectedBodyId);
         if (!b) return;
         pushHistory();
-        b.faceTarget = btn.dataset.facetarget;
+        applyPropToBodyOrGroup(b, 'faceTarget', btn.dataset.facetarget);
         state.selectedFaceName = faceLabelsMap[b.faceTarget] || 'Грань';
         rebuildBodies3D();
         updateBottomContextPanel();
@@ -2672,8 +3276,8 @@
       const b = state.bodies.find(x => x.id === state.selectedBodyId);
       if (!b) return;
       const clamped = Math.max(0, Math.min(20, Math.round(val * 10) / 10));
-      b.edgeAmount = clamped;
-      if (clamped > 0 && (!b.edgeMode || b.edgeMode === 'none')) b.edgeMode = 'fillet';
+      applyPropToBodyOrGroup(b, 'edgeAmount', clamped);
+      if (clamped > 0 && (!b.edgeMode || b.edgeMode === 'none')) applyPropToBodyOrGroup(b, 'edgeMode', 'fillet');
       document.getElementById('rngEdgeAmount').value = clamped;
       document.getElementById('inpEdgeAmount').value = clamped.toFixed(1);
       rebuildBodies3D();
