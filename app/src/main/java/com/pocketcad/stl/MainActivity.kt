@@ -52,6 +52,7 @@ class MainActivity : AppCompatActivity() {
         settings.allowFileAccess = true
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
+        settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
 
         webView.addJavascriptInterface(AndroidBridge(), "AndroidBridge")
         webView.webViewClient = WebViewClient()
@@ -124,6 +125,13 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 Toast.makeText(this, "Ошибка сохранения: ${e.message}", Toast.LENGTH_LONG).show()
             }
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (::webView.isInitialized) {
+            webView.evaluateJavascript("if(window.saveProjectNow) window.saveProjectNow();", null)
         }
     }
 

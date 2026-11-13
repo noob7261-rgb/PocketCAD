@@ -128,6 +128,10 @@
             <span>🎥</span>
             <span class="hidden sm:inline">Камера</span>
           </button>
+          <button id="btnToggleMeasure3D" class="bg-[#151a26]/85 backdrop-blur-xl hover:bg-slate-800 text-slate-200 border border-white/10 px-3 py-1.5 rounded-full text-[11px] font-semibold shadow-lg flex items-center gap-1 active:scale-95 transition" title="3D-штангенциркуль: тапните 2 точки на модели для замера расстояния">
+            <span>📏</span>
+            <span class="hidden sm:inline">Замер</span>
+          </button>
         </div>
 
         <!-- Grid, Snap & Long-Press Step Drawer -->
@@ -248,7 +252,8 @@
                 <span id="selectedSketchLabel" class="text-xs font-semibold text-white truncate">Эскиз #1</span>
               </div>
               <div class="flex items-center gap-1 shrink-0">
-                <button id="btnToggleDragSketch" class="px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-semibold">✋ Двигать</button>
+                <button id="btnCloneSelectedSketch" class="px-2 py-1 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[11px] font-semibold" title="Клонировать эскиз">⧉ Дубль</button>
+                <button id="btnToggleDragSketch" class="px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-semibold">✋</button>
                 <button id="btnEditSelectedSketch" class="px-2.5 py-1 rounded-xl bg-blue-600/20 text-blue-300 text-[11px] font-semibold">✎ 2D</button>
                 <button id="btnDeleteSelectedSketch" class="px-2 py-1 rounded-xl bg-rose-500/15 text-rose-300 text-[11px]">Удалить</button>
                 <button id="btnCloseSketchPanel" class="px-2 py-1 rounded-xl bg-white/5 text-slate-400 text-xs">✕</button>
@@ -296,6 +301,7 @@
               <div class="flex items-center gap-1 shrink-0">
                 <button id="btnGroupOrUngroupBody" class="px-2 py-1 rounded-xl bg-purple-600/25 text-purple-300 border border-purple-500/30 text-[11px] font-semibold">🔗 Объед.</button>
                 <button id="btnSketchOnSelectedFace" class="px-2 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold active:scale-95 shadow">✎ Эскиз</button>
+                <button id="btnCloneSelectedBody" class="px-2 py-1 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[11px] font-semibold" title="Клонировать 3D-тело вместе с эскизом">⧉</button>
                 <button id="btnToggleDragBody" class="px-2 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-semibold">✋</button>
                 <button id="btnDeleteSelectedBody" class="px-2 py-1 rounded-xl bg-rose-500/15 text-rose-300 text-[11px]">🗑</button>
                 <button id="btnCloseBodyPanel" class="px-2 py-1 rounded-xl bg-white/5 text-slate-400 text-xs">✕</button>
@@ -403,13 +409,28 @@
                 <button data-fmt="dxf" class="export-fmt-btn px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300">.DXF</button>
               </div>
             </div>
-            <div class="flex items-center justify-end gap-2">
-              <button id="btnExportSTL" class="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-lg">
-                Скачать <span id="lblExportExt">.STL</span>
-              </button>
-              <button id="btnSharePrint" class="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold shadow-lg">
-                Поделиться / В печать
-              </button>
+            <div class="flex flex-wrap items-center justify-between gap-2 bg-black/25 px-2.5 py-1.5 rounded-xl border border-white/5 text-[11px]">
+              <span class="text-slate-400">Усадка пластика:</span>
+              <div class="flex items-center gap-1">
+                <button data-shrink="1.0" class="shrink-preset-btn px-2 py-0.5 rounded-lg bg-blue-600 text-white text-[10px] font-semibold">PLA 100%</button>
+                <button data-shrink="1.003" class="shrink-preset-btn px-2 py-0.5 rounded-lg bg-white/5 text-slate-300 text-[10px] font-semibold">PETG +0.3%</button>
+                <button data-shrink="1.008" class="shrink-preset-btn px-2 py-0.5 rounded-lg bg-white/5 text-slate-300 text-[10px] font-semibold">ABS +0.8%</button>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5">
+                <button id="btnSaveProjectJSON" class="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-[11px] font-semibold" title="Сохранить исходный проект в .json">💾 .JSON</button>
+                <label for="jsonProjectInput" class="cursor-pointer px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-[11px] font-semibold" title="Открыть проект .json">📂 Открыть</label>
+                <input id="jsonProjectInput" type="file" accept=".json" class="hidden">
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button id="btnExportSTL" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-lg">
+                  Скачать <span id="lblExportExt">.STL</span>
+                </button>
+                <button id="btnSharePrint" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold shadow-lg">
+                  В печать
+                </button>
+              </div>
             </div>
           </div>
 
@@ -431,6 +452,7 @@
             🧲 Магнит: Вкл
           </button>
           <button id="btnUndo2D" class="px-2 py-1.5 rounded-xl bg-white/5 text-amber-300 text-xs font-semibold border border-white/10">↶</button>
+          <button id="btnClone2D" class="px-2 py-1.5 rounded-xl bg-blue-500/20 text-blue-300 text-xs font-semibold border border-blue-500/30" title="Дублировать выбранную фигуру со сдвигом">⧉</button>
           <button id="btnDelete2D" class="px-2 py-1.5 rounded-xl bg-rose-500/20 text-rose-300 text-xs font-semibold border border-rose-500/30">🗑</button>
           <button id="btnCancelSketch" class="px-2.5 py-1.5 rounded-xl bg-white/5 text-slate-300 text-xs font-medium border border-white/10">Назад</button>
           <button id="btnFinishSketch" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-lg">Готово → 3D</button>
@@ -448,6 +470,7 @@
           <button data-stool="rect" class="sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 text-white whitespace-nowrap">▭ Прямоуг.</button>
           <button data-stool="circle" class="sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 whitespace-nowrap">◯ Круг</button>
           <button data-stool="slot" class="sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 whitespace-nowrap">⬭ Паз</button>
+          <button data-stool="hex" class="sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-amber-300 whitespace-nowrap" title="Шестигранник под гайку/болт (по размеру под ключ S)">⬢ Гайка</button>
           <button data-stool="poly" class="sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 whitespace-nowrap">⬠ Ломаная</button>
           <div class="h-4 w-px bg-white/10 mx-0.5"></div>
           <button id="btnSketchZoomOut" class="px-2.5 py-1.5 rounded-xl bg-white/5 text-slate-200 text-xs font-bold">−</button>
@@ -461,6 +484,19 @@
             <span id="lblCollapse2D">Свернуть размеры</span>
           </button>
           <div id="sketchBottomBody" class="px-3 pb-3 space-y-2">
+            <div class="flex items-center justify-between gap-1 overflow-x-auto pb-1 border-b border-white/10 text-[10px]">
+              <span class="text-slate-400 shrink-0">Крепёж:</span>
+              <button data-fastener="M3_hole" class="fastener-preset-btn px-1.5 py-0.5 rounded bg-white/5 hover:bg-blue-600/30 text-slate-200 whitespace-nowrap">◯ M3 (3.2)</button>
+              <button data-fastener="M4_hole" class="fastener-preset-btn px-1.5 py-0.5 rounded bg-white/5 hover:bg-blue-600/30 text-slate-200 whitespace-nowrap">◯ M4 (4.2)</button>
+              <button data-fastener="M5_hole" class="fastener-preset-btn px-1.5 py-0.5 rounded bg-white/5 hover:bg-blue-600/30 text-slate-200 whitespace-nowrap">◯ M5 (5.3)</button>
+              <button data-fastener="M6_hole" class="fastener-preset-btn px-1.5 py-0.5 rounded bg-white/5 hover:bg-blue-600/30 text-slate-200 whitespace-nowrap">◯ M6 (6.4)</button>
+              <button data-fastener="M8_hole" class="fastener-preset-btn px-1.5 py-0.5 rounded bg-white/5 hover:bg-blue-600/30 text-slate-200 whitespace-nowrap">◯ M8 (8.4)</button>
+              <button data-fastener="M3_nut" class="fastener-preset-btn px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 whitespace-nowrap">⬢ Гайка M3</button>
+              <button data-fastener="M4_nut" class="fastener-preset-btn px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 whitespace-nowrap">⬢ M4</button>
+              <button data-fastener="M5_nut" class="fastener-preset-btn px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 whitespace-nowrap">⬢ M5</button>
+              <button data-fastener="M6_nut" class="fastener-preset-btn px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 whitespace-nowrap">⬢ M6</button>
+              <button data-fastener="M8_nut" class="fastener-preset-btn px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 whitespace-nowrap">⬢ M8</button>
+            </div>
             <div class="flex items-center justify-between text-[10px] text-slate-400">
               <span>Шаг 2D (0.1 / 1 / 10 мм):</span>
               <div class="flex items-center gap-1">
@@ -578,6 +614,9 @@
       nudgeStepMm: 10,
       edgeStepMm: 1, // Configurable 0.1mm, 1mm, 10mm for bevel/fillet/chamfer size
       exportFormat: 'stl',
+      shrinkageFactor: 1.0,
+      measureMode: false,
+      measurePts: [],
       bedSize: 250,
       planesVisible: true,
 
@@ -1004,6 +1043,13 @@
           const a = (i / 48) * Math.PI * 2;
           pts.push({ u: params.u + Math.cos(a) * r, v: params.v + Math.sin(a) * r });
         }
+      } else if (shapeType === 'hex') {
+        const acrossFlats = Math.max(1.0, params.w - insetAmount * 2);
+        const rCircum = acrossFlats / Math.sqrt(3);
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          pts.push({ u: params.u + Math.cos(a) * rCircum, v: params.v + Math.sin(a) * rCircum });
+        }
       } else if (shapeType === 'slot') {
         const totalL = Math.max(2, Math.max(params.w, params.h) - insetAmount * 2);
         const diam = Math.max(1, Math.min(params.w, params.h) - insetAmount * 2);
@@ -1074,6 +1120,7 @@
         fillMesh.userData = { isSketch3D: true, sketchId: sk.id };
         sketches3DGroup.add(fillMesh);
       });
+      if (typeof scheduleAutosave === 'function') scheduleAutosave();
     }
 
     function shiftVertexInwardClean(x, y, cU, cV, sketch, shrinkAmount) {
@@ -1779,6 +1826,7 @@
       });
       updateBoundingBoxReadout();
       renderObjectTree();
+      if (typeof scheduleAutosave === 'function') scheduleAutosave();
     }
 
     function updateBoundingBoxReadout() {
@@ -2120,6 +2168,37 @@
       }
 
       if (state.dragModeActive) return;
+
+      // 3D Caliper Measure Mode: pick 2 points on 3D bodies or bed
+      if (state.measureMode) {
+        let hitPt = null;
+        if (picked && picked.hit && picked.hit.point) {
+          hitPt = picked.hit.point.clone();
+        } else {
+          hitPt = getHitBedPoint(e);
+        }
+        if (hitPt) {
+          state.measurePts.push(hitPt);
+          if (state.measurePts.length > 2) state.measurePts = [hitPt];
+          while (highlightGroup.children.length) highlightGroup.remove(highlightGroup.children[0]);
+          state.measurePts.forEach(p => {
+            const dot = new THREE.Mesh(new THREE.SphereGeometry(1.4, 16, 16), new THREE.MeshBasicMaterial({ color: 0xfbbf24, depthTest: false }));
+            dot.position.copy(p);
+            highlightGroup.add(dot);
+          });
+          if (state.measurePts.length === 1) {
+            showToast('Точка 1 выбрана. Тапните вторую точку для замера.');
+          } else if (state.measurePts.length === 2) {
+            const [p1, p2] = state.measurePts;
+            const lineGeo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+            highlightGroup.add(new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0xfbbf24, depthTest: false })));
+            const dist = p1.distanceTo(p2);
+            const dx = Math.abs(p2.x - p1.x), dy = Math.abs(p2.z - p1.z), dz = Math.abs(p2.y - p1.y);
+            showToast(`📏 L = ${dist.toFixed(2)} мм (ΔX:${dx.toFixed(1)} ΔY:${dy.toFixed(1)} ΔZ:${dz.toFixed(1)})`);
+          }
+        }
+        return;
+      }
 
       if (picked && picked.type === 'body') {
         const hit = picked.hit;
@@ -2483,7 +2562,7 @@
       if (state.isDrawing && state.drawStart && state.drawCurrent) {
         const u0 = state.drawStart.u, v0 = state.drawStart.v, u1 = state.drawCurrent.u, v1 = state.drawCurrent.v;
         let params = { u: (u0 + u1) / 2, v: (v0 + v1) / 2, w: Math.max(1, Math.abs(u1 - u0)), h: Math.max(1, Math.abs(v1 - v0)) };
-        if (state.sketchTool === 'circle') {
+        if (state.sketchTool === 'circle' || state.sketchTool === 'hex') {
           const rad = Math.max(1, Math.hypot(u1 - u0, v1 - v0));
           params = { u: u0, v: v0, w: rad * 2, h: rad * 2 };
         }
@@ -2524,7 +2603,7 @@
           return;
         }
       }
-      const names = { rect: 'Прямоугольник', circle: 'Круг', slot: 'Паз', poly: 'Контур' };
+      const names = { rect: 'Прямоугольник', circle: 'Круг', slot: 'Паз', hex: 'Гайка Hex', poly: 'Контур' };
       const sk = {
         id: genId('sk'),
         sessionId: state.currentSketchSessionId || genId('sess'),
@@ -2752,9 +2831,9 @@
       state.isDrawing = false;
       const u0 = state.drawStart.u, v0 = state.drawStart.v, u1 = state.drawCurrent.u, v1 = state.drawCurrent.v;
 
-      if (state.sketchTool === 'circle') {
+      if (state.sketchTool === 'circle' || state.sketchTool === 'hex') {
         const r = Math.hypot(u1 - u0, v1 - v0);
-        if (r >= 1) registerNewSketch('circle', { u: u0, v: v0, w: r * 2, h: r * 2 }, null, true);
+        if (r >= 1) registerNewSketch(state.sketchTool, { u: u0, v: v0, w: r * 2, h: r * 2 }, null, true);
       } else {
         const w = Math.abs(u1 - u0), h = Math.abs(v1 - v0);
         if (w >= 1 && h >= 1) registerNewSketch(state.sketchTool, { u: (u0 + u1) / 2, v: (v0 + v1) / 2, w, h }, null, true);
@@ -2845,6 +2924,7 @@
       solidBodies.forEach((b, idx) => {
         lines.push(`g part_${idx + 1}`);
         const g = b.computedGeometry.index ? b.computedGeometry.toNonIndexed() : b.computedGeometry.clone();
+        if (state.shrinkageFactor && state.shrinkageFactor !== 1.0) g.scale(state.shrinkageFactor, state.shrinkageFactor, state.shrinkageFactor);
         const pos = g.attributes.position;
         for (let i = 0; i < pos.count; i++) {
           const x = pos.getX(i).toFixed(4);
@@ -2912,6 +2992,7 @@
       const brepIds = [];
       solidBodies.forEach((b, bIdx) => {
         const g = b.computedGeometry.index ? b.computedGeometry.toNonIndexed() : b.computedGeometry.clone();
+        if (state.shrinkageFactor && state.shrinkageFactor !== 1.0) g.scale(state.shrinkageFactor, state.shrinkageFactor, state.shrinkageFactor);
         const pos = g.attributes.position;
         const pointMap = new Map();
         const vertIdMap = new Map();
@@ -2988,6 +3069,7 @@
       let totalTriangles = 0;
       const nonIndexed = solidBodies.map(b => {
         const g = b.computedGeometry.index ? b.computedGeometry.toNonIndexed() : b.computedGeometry.clone();
+        if (state.shrinkageFactor && state.shrinkageFactor !== 1.0) g.scale(state.shrinkageFactor, state.shrinkageFactor, state.shrinkageFactor);
         totalTriangles += g.attributes.position.count / 3;
         return g;
       });
@@ -3072,8 +3154,8 @@
           const act = b.dataset.stool === state.sketchTool;
           b.className = act ? 'sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 text-white whitespace-nowrap' : 'sketch-tool-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 whitespace-nowrap';
         });
-        document.getElementById('lblDim1').textContent = state.sketchTool === 'circle' ? 'Ø:' : 'W:';
-        document.getElementById('wrapDim2').classList.toggle('hidden', state.sketchTool === 'circle');
+        document.getElementById('lblDim1').textContent = state.sketchTool === 'circle' ? 'Ø:' : (state.sketchTool === 'hex' ? 'S:' : 'W:');
+        document.getElementById('wrapDim2').classList.toggle('hidden', state.sketchTool === 'circle' || state.sketchTool === 'hex');
       });
     });
 
@@ -3212,6 +3294,116 @@
         selectBody(createdBodies[0].id, 'Верх (+Z)', 'top');
       }
       showToast(op === 'cut' ? `Вырез применён (${targets.length} эл.)` : `Создано 3D (${targets.length} эл.)`);
+    });
+
+
+    const FASTENER_PRESETS = {
+      M3_hole: { type: 'circle', w: 3.2, label: 'Отв. M3 (Ø3.2)' },
+      M4_hole: { type: 'circle', w: 4.2, label: 'Отв. M4 (Ø4.2)' },
+      M5_hole: { type: 'circle', w: 5.3, label: 'Отв. M5 (Ø5.3)' },
+      M6_hole: { type: 'circle', w: 6.4, label: 'Отв. M6 (Ø6.4)' },
+      M8_hole: { type: 'circle', w: 8.4, label: 'Отв. M8 (Ø8.4)' },
+      M3_nut:  { type: 'hex',    w: 5.65, label: 'Гайка M3 (S=5.65)' },
+      M4_nut:  { type: 'hex',    w: 7.2,  label: 'Гайка M4 (S=7.2)' },
+      M5_nut:  { type: 'hex',    w: 8.2,  label: 'Гайка M5 (S=8.2)' },
+      M6_nut:  { type: 'hex',    w: 10.2, label: 'Гайка M6 (S=10.2)' },
+      M8_nut:  { type: 'hex',    w: 13.2, label: 'Гайка M8 (S=13.2)' }
+    };
+
+    document.querySelectorAll('.fastener-preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pr = FASTENER_PRESETS[btn.dataset.fastener];
+        if (!pr) return;
+        const u = parseFloat(document.getElementById('inpSketchU').value) || 0;
+        const v = parseFloat(document.getElementById('inpSketchV').value) || 0;
+        document.getElementById('inpSketchW').value = pr.w;
+        document.getElementById('inpSketchH').value = pr.w;
+        registerNewSketch(pr.type, { u, v, w: pr.w, h: pr.w }, null, true);
+        showToast(`Добавлен: ${pr.label}`);
+      });
+    });
+
+    function cloneSketchById(skId) {
+      const sk = state.sketches.find(s => s.id === skId);
+      if (!sk) return null;
+      const shift = Math.max(5, state.nudgeStepMm || 10);
+      const cloned = {
+        ...sk,
+        id: genId('sk'),
+        name: `${sk.name} (копия)`,
+        params: sk.params ? { ...sk.params, u: sk.params.u + shift } : null,
+        points2D: sk.points2D ? sk.points2D.map(p => ({ u: p.u + shift, v: p.v })) : null
+      };
+      state.sketches.push(cloned);
+      return cloned;
+    }
+
+    document.getElementById('btnClone2D').addEventListener('click', () => {
+      const targetId = state.selectedSketchId || state.editingSketchId || (state.sketches[state.sketches.length - 1]?.id);
+      if (!targetId) { showToast('Нет фигуры для дублирования'); return; }
+      pushHistory();
+      const c = cloneSketchById(targetId);
+      if (c) {
+        state.selectedSketchId = c.id;
+        state.editingSketchId = c.id;
+        drawSketchCanvas();
+        showToast(`Создана копия (+${Math.max(5, state.nudgeStepMm || 10)} мм по U)`);
+      }
+    });
+
+    document.getElementById('btnCloneSelectedSketch').addEventListener('click', () => {
+      if (!state.selectedSketchId) return;
+      pushHistory();
+      const c = cloneSketchById(state.selectedSketchId);
+      if (c) {
+        selectSketch(c.id);
+        showToast('Эскиз клонирован');
+      }
+    });
+
+    document.getElementById('btnCloneSelectedBody').addEventListener('click', () => {
+      const b = state.bodies.find(x => x.id === state.selectedBodyId);
+      if (!b) return;
+      pushHistory();
+      const shift = Math.max(10, state.nudgeStepMm || 10);
+      const cloneSingleBodyWithSketch = (orig) => {
+        if (orig.type === 'group' && Array.isArray(orig.children)) {
+          return {
+            ...orig,
+            id: genId('grp'),
+            name: `${orig.name} (копия)`,
+            children: orig.children.map(cloneSingleBodyWithSketch)
+          };
+        }
+        let newSkId = orig.sketchId;
+        if (orig.sketchId) {
+          const origSk = state.sketches.find(s => s.id === orig.sketchId);
+          if (origSk) {
+            const cSk = {
+              ...origSk,
+              id: genId('sk'),
+              sessionId: genId('sess'),
+              name: `${origSk.name} (копия)`,
+              params: origSk.params ? { ...origSk.params, u: origSk.params.u + shift } : null,
+              points2D: origSk.points2D ? origSk.points2D.map(p => ({ u: p.u + shift, v: p.v })) : null
+            };
+            state.sketches.push(cSk);
+            newSkId = cSk.id;
+          }
+        }
+        return {
+          ...orig,
+          id: genId('body'),
+          name: `${orig.name} (копия)`,
+          sketchId: newSkId,
+          rawGeometry: orig.rawGeometry ? orig.rawGeometry.clone() : null,
+          shiftX: orig.sketchId ? (orig.shiftX || 0) : (orig.shiftX || 0) + shift
+        };
+      };
+      const clonedBody = cloneSingleBodyWithSketch(b);
+      state.bodies.push(clonedBody);
+      selectBody(clonedBody.id, 'Верх (+Z)', 'top');
+      showToast(`Тело дублировано (+${shift} мм)`);
     });
 
     document.getElementById('btnDeleteSelectedSketch').addEventListener('click', () => {
@@ -3442,6 +3634,72 @@
       e.target.value = '';
     });
 
+
+    // 3D Measure Tool Toggle
+    document.getElementById('btnToggleMeasure3D').addEventListener('click', e => {
+      state.measureMode = !state.measureMode;
+      state.measurePts = [];
+      while (highlightGroup.children.length) highlightGroup.remove(highlightGroup.children[0]);
+      e.currentTarget.className = state.measureMode
+        ? 'bg-amber-500 text-slate-950 border border-amber-400 px-3 py-1.5 rounded-full text-[11px] font-bold shadow-lg flex items-center gap-1 active:scale-95 transition'
+        : 'bg-[#151a26]/85 backdrop-blur-xl hover:bg-slate-800 text-slate-200 border border-white/10 px-3 py-1.5 rounded-full text-[11px] font-semibold shadow-lg flex items-center gap-1 active:scale-95 transition';
+      showToast(state.measureMode ? 'Штангенциркуль Вкл: тапните 2 точки на модели' : 'Штангенциркуль Выкл');
+    });
+
+    // Shrinkage Presets
+    document.querySelectorAll('.shrink-preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.shrinkageFactor = parseFloat(btn.dataset.shrink) || 1.0;
+        document.querySelectorAll('.shrink-preset-btn').forEach(b => {
+          const act = parseFloat(b.dataset.shrink) === state.shrinkageFactor;
+          b.className = act
+            ? 'shrink-preset-btn px-2 py-0.5 rounded-lg bg-blue-600 text-white text-[10px] font-semibold'
+            : 'shrink-preset-btn px-2 py-0.5 rounded-lg bg-white/5 text-slate-300 text-[10px] font-semibold';
+        });
+        showToast(`Компенсация усадки при экспорте: ×${state.shrinkageFactor}`);
+      });
+    });
+
+    // Save / Load Project JSON
+    document.getElementById('btnSaveProjectJSON').addEventListener('click', () => {
+      const payload = {
+        v: 1, nextId, bedSize: state.bedSize, gridStep: state.gridStep,
+        sketches: state.sketches,
+        bodies: state.bodies.map(serializeBodyForStorage)
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const fileName = `pocketcad_project_${new Date().toISOString().slice(0, 10)}.json`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      showToast(`Проект ${fileName} сохранён`);
+    });
+
+    document.getElementById('jsonProjectInput').addEventListener('change', e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          if (!data || !Array.isArray(data.sketches) || !Array.isArray(data.bodies)) throw new Error('Invalid');
+          pushHistory();
+          if (data.nextId) nextId = Math.max(nextId, Number(data.nextId) || 1);
+          state.sketches = data.sketches;
+          state.bodies = data.bodies.map(deserializeBodyFromStorage);
+          rebuildSketches3D();
+          rebuildBodies3D();
+          updateBottomContextPanel();
+          showToast(`Проект ${file.name} загружен`);
+        } catch {
+          showToast('Ошибка чтения файла проекта .json');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
     const exportMeta = {
       stl:  { ext: '.stl',  desc: 'Бинарный STL (Слайсер / Печать)', mime: 'model/stl' },
       step: { ext: '.step', desc: 'STEP AP214 (КОМПАС-3D / Fusion 360)', mime: 'application/step' },
@@ -3517,9 +3775,105 @@
       document.getElementById('btnExportSTL').click();
     });
 
-    // Init
+
+    // =========================================================================
+    // AUTO-SAVE & RESTORE LAST PROJECT (localStorage, survives app close)
+    // =========================================================================
+    const AUTOSAVE_KEY = 'pocketcad_autosave_v1';
+    let autosaveTimer = null;
+
+    function serializeBodyForStorage(b) {
+      const copy = { ...b, computedGeometry: null };
+      if (copy.rawGeometry && copy.rawGeometry.attributes && copy.rawGeometry.attributes.position) {
+        const arr = copy.rawGeometry.attributes.position.array;
+        if (arr.length <= 300000) { // ~1.2MB limit per imported STL for localStorage safety
+          copy.rawPositions = Array.from(arr);
+        }
+      }
+      delete copy.rawGeometry;
+      if (Array.isArray(copy.children)) {
+        copy.children = copy.children.map(serializeBodyForStorage);
+      }
+      return copy;
+    }
+
+    function deserializeBodyFromStorage(b) {
+      const copy = { ...b, computedGeometry: null };
+      if (Array.isArray(copy.rawPositions)) {
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(copy.rawPositions, 3));
+        geo.computeVertexNormals();
+        geo.computeBoundingBox();
+        copy.rawGeometry = geo;
+        delete copy.rawPositions;
+      }
+      if (Array.isArray(copy.children)) {
+        copy.children = copy.children.map(deserializeBodyFromStorage);
+      }
+      return copy;
+    }
+
+    window.saveProjectNow = function saveProjectNow() {
+      try {
+        const payload = {
+          v: 1,
+          nextId,
+          bedSize: state.bedSize,
+          gridStep: state.gridStep,
+          nudgeStepMm: state.nudgeStepMm,
+          edgeStepMm: state.edgeStepMm,
+          snapEnabled: state.snapEnabled,
+          refMagnetEnabled: state.refMagnetEnabled,
+          sketches: state.sketches,
+          bodies: state.bodies.map(serializeBodyForStorage)
+        };
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
+      } catch (e) {}
+    };
+
+    function scheduleAutosave() {
+      clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(() => { window.saveProjectNow(); }, 250);
+    }
+
+    function tryRestoreLastProject() {
+      try {
+        const raw = localStorage.getItem(AUTOSAVE_KEY);
+        if (!raw) return false;
+        const data = JSON.parse(raw);
+        if (!data || !Array.isArray(data.sketches) || !Array.isArray(data.bodies)) return false;
+        if (data.nextId) nextId = Math.max(nextId, Number(data.nextId) || 1);
+        if (data.bedSize) { state.bedSize = data.bedSize; document.getElementById('selectBedSize').value = String(data.bedSize); rebuildBedGrid(); }
+        if (data.gridStep) state.gridStep = data.gridStep;
+        if (data.nudgeStepMm) setNudgeStep(data.nudgeStepMm);
+        if (data.edgeStepMm) state.edgeStepMm = data.edgeStepMm;
+        if (typeof data.snapEnabled === 'boolean') state.snapEnabled = data.snapEnabled;
+        if (typeof data.refMagnetEnabled === 'boolean') state.refMagnetEnabled = data.refMagnetEnabled;
+
+        state.sketches = data.sketches;
+        state.bodies = data.bodies.map(deserializeBodyFromStorage);
+        rebuildSketches3D();
+        rebuildBodies3D();
+        updateBottomContextPanel();
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') window.saveProjectNow();
+    });
+    window.addEventListener('pagehide', () => window.saveProjectNow());
+    window.addEventListener('beforeunload', () => window.saveProjectNow());
+
+    // Init (restore last project if saved, otherwise load default bracket template)
     setNudgeStep(10);
-    loadTemplate('bracket', false);
+    if (!tryRestoreLastProject()) {
+      loadTemplate('bracket', false);
+    } else {
+      showToast('Последний проект восстановлен');
+    }
     updateUndoButtonUI();
     window.addEventListener('resize', () => {
       camera.aspect = viewport.clientWidth / viewport.clientHeight;
