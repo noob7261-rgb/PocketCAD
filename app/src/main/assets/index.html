@@ -243,9 +243,11 @@
           
           <!-- STEP 1: CHOOSE PLANE -->
           <div id="panelStep1Planes" class="space-y-2">
-            <div class="text-[11px] font-medium text-slate-400 text-center">
-              Тапните на плоскость или на конкретную грань 3D-детали для эскиза / фаски
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[11px] font-medium text-slate-400 truncate">Тапните плоскость или грань 3D-детали</span>
+              <button id="btnOpenCustomPlaneModal" class="px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 border border-amber-500/40 text-amber-300 text-[11px] font-bold whitespace-nowrap shrink-0">+ Плоскость</button>
             </div>
+            <div id="customPlanesList" class="hidden flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5"></div>
             <div class="grid grid-cols-3 gap-2">
               <button data-plane="XY" class="plane-select-btn py-2.5 px-2 rounded-2xl bg-blue-600/15 hover:bg-blue-600/30 active:scale-95 border border-blue-500/40 text-blue-200 flex flex-col items-center transition">
                 <span class="text-xs font-bold">XY (Стол)</span>
@@ -342,15 +344,17 @@
                 <button data-edgemode="outer_fillet" class="edge-mode-btn py-1 rounded-lg text-[10px] font-semibold text-amber-300" title="Внешняя галтель усиления в месте стыка деталей">Галтель</button>
               </div>
 
-              <!-- Specific Face Selector (Can tap face on 3D model OR tap button here) -->
-              <div class="grid grid-cols-7 gap-1 bg-black/30 p-1 rounded-xl overflow-x-auto no-scrollbar min-w-0">
-                <button data-facetarget="top" class="face-target-btn py-1 rounded-lg text-[10px] font-semibold bg-emerald-600 text-white">Верх</button>
-                <button data-facetarget="bottom" class="face-target-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Низ</button>
-                <button data-facetarget="front" class="face-target-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Перед</button>
-                <button data-facetarget="back" class="face-target-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Зад</button>
-                <button data-facetarget="left" class="face-target-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Лево</button>
-                <button data-facetarget="right" class="face-target-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Право</button>
-                <button data-facetarget="both" class="face-target-btn py-1 rounded-lg text-[10px] font-semibold text-slate-300">Все</button>
+              <!-- Specific Face Selector (independent per-face & hole flare ops) -->
+              <div class="grid grid-cols-5 sm:grid-cols-9 gap-1 bg-black/30 p-1 rounded-xl min-w-0">
+                <button data-facetarget="top" class="face-target-btn py-1 px-1 rounded-lg text-[10px] font-semibold bg-emerald-600 text-white truncate">Верх</button>
+                <button data-facetarget="bottom" class="face-target-btn py-1 px-1 rounded-lg text-[10px] font-semibold text-slate-300 truncate">Низ</button>
+                <button data-facetarget="front" class="face-target-btn py-1 px-1 rounded-lg text-[10px] font-semibold text-slate-300 truncate">Перед</button>
+                <button data-facetarget="back" class="face-target-btn py-1 px-1 rounded-lg text-[10px] font-semibold text-slate-300 truncate">Зад</button>
+                <button data-facetarget="left" class="face-target-btn py-1 px-1 rounded-lg text-[10px] font-semibold text-slate-300 truncate">Лево</button>
+                <button data-facetarget="right" class="face-target-btn py-1 px-1 rounded-lg text-[10px] font-semibold text-slate-300 truncate">Право</button>
+                <button data-facetarget="holes_top" class="face-target-btn py-1 px-1 rounded-lg text-[10px] font-semibold text-cyan-300 truncate" title="Развальцовка отверстий сверху">Отв.В</button>
+                <button data-facetarget="holes_bottom" class="face-target-btn py-1 px-1 rounded-lg text-[10px] font-semibold text-cyan-300 truncate" title="Развальцовка отверстий снизу">Отв.Н</button>
+                <button data-facetarget="both" class="face-target-btn py-1 px-1 rounded-lg text-[10px] font-semibold text-slate-300 truncate col-span-2 sm:col-span-1">Все</button>
               </div>
 
               <!-- Edge Size Controls with 0.1mm / 1mm / 10mm step + - / + buttons -->
@@ -397,6 +401,19 @@
 
             <!-- Tab 3: Position -->
             <div id="btabMove" class="hidden space-y-2">
+              <div class="flex items-center justify-between gap-2 bg-black/25 px-2.5 py-1.5 rounded-xl border border-white/5">
+                <span class="text-[11px] text-slate-400 shrink-0">Цвет:</span>
+                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                  <button data-bcolor="#3b82f6" class="body-color-btn w-5 h-5 rounded-full bg-[#3b82f6] border border-white/30 shrink-0" title="Синий"></button>
+                  <button data-bcolor="#f8fafc" class="body-color-btn w-5 h-5 rounded-full bg-[#f8fafc] border border-white/30 shrink-0" title="Белый"></button>
+                  <button data-bcolor="#1e293b" class="body-color-btn w-5 h-5 rounded-full bg-[#1e293b] border border-white/30 shrink-0" title="Чёрный"></button>
+                  <button data-bcolor="#94a3b8" class="body-color-btn w-5 h-5 rounded-full bg-[#94a3b8] border border-white/30 shrink-0" title="Серый"></button>
+                  <button data-bcolor="#f59e0b" class="body-color-btn w-5 h-5 rounded-full bg-[#f59e0b] border border-white/30 shrink-0" title="Оранжевый"></button>
+                  <button data-bcolor="#10b981" class="body-color-btn w-5 h-5 rounded-full bg-[#10b981] border border-white/30 shrink-0" title="Зелёный"></button>
+                  <button data-bcolor="#ef4444" class="body-color-btn w-5 h-5 rounded-full bg-[#ef4444] border border-white/30 shrink-0" title="Красный"></button>
+                  <input id="inpBodyColor" type="color" value="#3b82f6" class="w-6 h-5 p-0 border-0 rounded bg-transparent cursor-pointer shrink-0" title="Свой цвет">
+                </div>
+              </div>
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-1.5">
                   <span class="text-[11px] text-slate-400">X:</span>
@@ -417,7 +434,10 @@
           <div id="panelStep4Export" class="hidden space-y-2">
             <div class="flex items-center justify-between gap-2">
               <div>
-                <div class="text-xs font-bold text-white">Экспорт для печати и САПР</div>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-white">Экспорт для печати и САПР</span>
+                  <span id="manifoldBadge" class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">✓ Manifold</span>
+                </div>
                 <div id="lblExportDesc" class="text-[10px] text-slate-400">Бинарный STL (мм, Z-вверх)</div>
               </div>
               <div class="grid grid-cols-4 gap-1 bg-black/35 p-1 rounded-xl">
@@ -779,6 +799,41 @@
 
   </div>
 
+    <!-- CUSTOM DATUM PLANE MODAL -->
+    <div id="customPlaneModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="w-full max-w-sm bg-[#121620] border border-white/15 rounded-2xl p-4 space-y-3 shadow-2xl">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-bold text-white">Новая плоскость (Datum Plane)</span>
+          <button id="btnCloseCustomPlaneModal" class="w-7 h-7 rounded-lg bg-white/10 text-slate-300 text-xs font-bold">✕</button>
+        </div>
+        <div class="grid grid-cols-2 gap-1 bg-black/40 p-1 rounded-xl">
+          <button id="tabCp2Pts" class="py-1.5 rounded-lg text-xs font-semibold bg-amber-600 text-white">По 2 точкам (A→B)</button>
+          <button id="tabCpAngles" class="py-1.5 rounded-lg text-xs font-semibold text-slate-400">Точка + Углы</button>
+        </div>
+        <div id="cpPanel2Pts" class="space-y-2.5">
+          <p class="text-[11px] text-slate-300 leading-relaxed">
+            Выберите точку входа <b>A</b> и точку выхода <b>B</b> на 3D-детали (с привязкой к углам). Плоскость встанет в точке <b>A</b> перпендикулярно оси <b>A→B</b> — идеально для сквозных отверстий из угла в угол.
+          </p>
+          <button id="btnStartPick2Pts" class="w-full py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 active:scale-95 text-white text-xs font-bold shadow-lg">
+            🎯 Выбрать точки A и B на 3D-модели
+          </button>
+        </div>
+        <div id="cpPanelAngles" class="hidden space-y-2">
+          <div class="grid grid-cols-3 gap-1.5 text-[11px]">
+            <label class="space-y-0.5"><span class="text-slate-400">X (мм)</span><input id="inpCpX" type="number" step="0.5" value="0" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 text-white font-mono"></label>
+            <label class="space-y-0.5"><span class="text-slate-400">Y (мм)</span><input id="inpCpY" type="number" step="0.5" value="0" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 text-white font-mono"></label>
+            <label class="space-y-0.5"><span class="text-slate-400">Z (мм)</span><input id="inpCpZ" type="number" step="0.5" value="0" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 text-white font-mono"></label>
+            <label class="space-y-0.5"><span class="text-slate-400">RX (°)</span><input id="inpCpRX" type="number" step="5" value="0" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 text-amber-300 font-mono"></label>
+            <label class="space-y-0.5"><span class="text-slate-400">RY (°)</span><input id="inpCpRY" type="number" step="5" value="0" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 text-amber-300 font-mono"></label>
+            <label class="space-y-0.5"><span class="text-slate-400">RZ (°)</span><input id="inpCpRZ" type="number" step="5" value="45" class="w-full bg-slate-900 border border-white/15 rounded-lg px-2 py-1 text-amber-300 font-mono"></label>
+          </div>
+          <button id="btnCreateCpAngles" class="w-full py-2 rounded-xl bg-amber-600 hover:bg-amber-500 active:scale-95 text-white text-xs font-bold">
+            Создать плоскость и открыть эскиз
+          </button>
+        </div>
+      </div>
+    </div>
+
   <script>
     // =========================================================================
     // STATE & UNDO HISTORY STACK
@@ -792,6 +847,10 @@
       sketchBottomCollapsed: false,
 
       activePlane: 'XY',
+      defaultBodyColor: '#3b82f6',
+      customPlanes: [],
+      planePickMode: false,
+      planePickPts: [],
       planeOffset: 0,
       gridStep: 1,
       snapEnabled: true,
@@ -863,6 +922,7 @@
           points2D: s.points2D ? s.points2D.map(p => ({ ...p })) : null
         })),
         bodies: state.bodies.map(cloneBody),
+        customPlanes: (state.customPlanes || []).map(p => ({ ...p, origin: { ...p.origin }, uAxis: { ...p.uAxis }, vAxis: { ...p.vAxis }, nAxis: { ...p.nAxis } })),
         selectedSketchId: state.selectedSketchId,
         selectedBodyId: state.selectedBodyId
       };
@@ -881,6 +941,7 @@
       const snap = historyStack.pop();
       state.sketches = snap.sketches;
       state.bodies = snap.bodies;
+      if (Array.isArray(snap.customPlanes)) { state.customPlanes = snap.customPlanes; buildReferencePlanes(); if (typeof renderCustomPlanesList === 'function') renderCustomPlanesList(); }
       state.selectedSketchId = snap.selectedSketchId;
       state.selectedBodyId = snap.selectedBodyId;
       updateUndoButtonUI();
@@ -1094,6 +1155,9 @@
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setSize(viewport.clientWidth, viewport.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    renderer.outputEncoding = THREE.sRGBEncoding;
     viewport.appendChild(renderer.domElement);
 
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -1101,13 +1165,17 @@
     controls.dampingFactor = 0.08;
     controls.target.set(0, 10, 0);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-    const dLight1 = new THREE.DirectionalLight(0xffffff, 0.75);
+    scene.add(new THREE.HemisphereLight(0xe2e8f0, 0x1e293b, 0.72));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+    const dLight1 = new THREE.DirectionalLight(0xffffff, 0.85);
     dLight1.position.set(180, 300, 200);
     scene.add(dLight1);
-    const dLight2 = new THREE.DirectionalLight(0x93c5fd, 0.35);
+    const dLight2 = new THREE.DirectionalLight(0x93c5fd, 0.42);
     dLight2.position.set(-180, -120, -160);
     scene.add(dLight2);
+    const dLight3 = new THREE.DirectionalLight(0xfef3c7, 0.28);
+    dLight3.position.set(0, -180, 220);
+    scene.add(dLight3);
 
     const gridGroup = new THREE.Group();
     const planesGroup = new THREE.Group();
@@ -1152,6 +1220,28 @@
         mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: def.color, transparent: true, opacity: 0.45 })));
         planesGroup.add(mesh);
       });
+      (state.customPlanes || []).forEach(cp => {
+        const cSize = 70;
+        const geo = new THREE.PlaneGeometry(cSize, cSize);
+        const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }));
+        const m4 = new THREE.Matrix4().makeBasis(
+          new THREE.Vector3(cp.uAxis.x, cp.uAxis.y, cp.uAxis.z),
+          new THREE.Vector3(cp.vAxis.x, cp.vAxis.y, cp.vAxis.z),
+          new THREE.Vector3(cp.nAxis.x, cp.nAxis.y, cp.nAxis.z)
+        );
+        mesh.quaternion.setFromRotationMatrix(m4);
+        mesh.position.set(cp.origin.x, cp.origin.y, cp.origin.z);
+        mesh.userData = { isRefPlane: true, planeCode: cp.id };
+        mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.75 })));
+        // Normal direction indicator
+        const nLen = Math.min(40, Math.max(12, cp.suggestedDepth || 18));
+        const nLine = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, nLen)]),
+          new THREE.LineBasicMaterial({ color: 0x22d3ee })
+        );
+        mesh.add(nLine);
+        planesGroup.add(mesh);
+      });
     }
 
     rebuildBedGrid();
@@ -1163,7 +1253,85 @@
     function planeUVNtoSceneVec3(plane, u, v, n) {
       if (plane === 'XY') return new THREE.Vector3(u, n, -v);
       if (plane === 'XZ') return new THREE.Vector3(u, v, -n);
+      if (plane === 'YZ') return new THREE.Vector3(n, v, -u);
+      const cp = (state.customPlanes || []).find(p => p.id === plane);
+      if (cp) {
+        return new THREE.Vector3(
+          cp.origin.x + cp.uAxis.x * u + cp.vAxis.x * v + cp.nAxis.x * n,
+          cp.origin.y + cp.uAxis.y * u + cp.vAxis.y * v + cp.nAxis.y * n,
+          cp.origin.z + cp.uAxis.z * u + cp.vAxis.z * v + cp.nAxis.z * n
+        );
+      }
       return new THREE.Vector3(n, v, -u);
+    }
+
+    function sceneVec3toPlaneUVN(plane, vec) {
+      if (plane === 'XY') return { u: vec.x, v: -vec.z, n: vec.y };
+      if (plane === 'XZ') return { u: vec.x, v: vec.y, n: -vec.z };
+      if (plane === 'YZ') return { u: -vec.z, v: vec.y, n: vec.x };
+      const cp = (state.customPlanes || []).find(p => p.id === plane);
+      if (cp) {
+        const dx = vec.x - cp.origin.x, dy = vec.y - cp.origin.y, dz = vec.z - cp.origin.z;
+        return {
+          u: dx * cp.uAxis.x + dy * cp.uAxis.y + dz * cp.uAxis.z,
+          v: dx * cp.vAxis.x + dy * cp.vAxis.y + dz * cp.vAxis.z,
+          n: dx * cp.nAxis.x + dy * cp.nAxis.y + dz * cp.nAxis.z
+        };
+      }
+      return { u: -vec.z, v: vec.y, n: vec.x };
+    }
+
+    function buildOrthonormalBasisFromNormal(nVec) {
+      const nAxis = nVec.clone().normalize();
+      const refUp = Math.abs(nAxis.y) > 0.92 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+      const uAxis = new THREE.Vector3().crossVectors(refUp, nAxis).normalize();
+      const vAxis = new THREE.Vector3().crossVectors(nAxis, uAxis).normalize();
+      return { uAxis, vAxis, nAxis };
+    }
+
+    function createCustomPlaneFrom2Points(ptA, ptB, customName = null) {
+      const diff = new THREE.Vector3().subVectors(ptB, ptA);
+      const dist = diff.length();
+      if (dist < 0.1) return null;
+      const { uAxis, vAxis, nAxis } = buildOrthonormalBasisFromNormal(diff);
+      const idx = (state.customPlanes || []).length + 1;
+      const cp = {
+        id: genId('CP'),
+        name: customName || `Ось ${idx} (${dist.toFixed(1)}мм)`,
+        origin: { x: ptA.x, y: ptA.y, z: ptA.z },
+        uAxis: { x: uAxis.x, y: uAxis.y, z: uAxis.z },
+        vAxis: { x: vAxis.x, y: vAxis.y, z: vAxis.z },
+        nAxis: { x: nAxis.x, y: nAxis.y, z: nAxis.z },
+        suggestedDepth: Math.round(dist * 10) / 10
+      };
+      state.customPlanes.push(cp);
+      return cp;
+    }
+
+    function createCustomPlaneFromPointAngles(x, y, z, rxDeg, ryDeg, rzDeg, customName = null) {
+      // Input X, Y(depth->-Z), Z(height->Y) in CAD coords mapped to Scene coords
+      const euler = new THREE.Euler(
+        THREE.MathUtils.degToRad(rxDeg || 0),
+        THREE.MathUtils.degToRad(rzDeg || 0),
+        THREE.MathUtils.degToRad(ryDeg || 0),
+        'XYZ'
+      );
+      const q = new THREE.Quaternion().setFromEuler(euler);
+      const uAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(q).normalize();
+      const vAxis = new THREE.Vector3(0, 0, -1).applyQuaternion(q).normalize();
+      const nAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(q).normalize();
+      const idx = (state.customPlanes || []).length + 1;
+      const cp = {
+        id: genId('CP'),
+        name: customName || `Плоскость ${idx}`,
+        origin: { x: Number(x) || 0, y: Number(z) || 0, z: -(Number(y) || 0) },
+        uAxis: { x: uAxis.x, y: uAxis.y, z: uAxis.z },
+        vAxis: { x: vAxis.x, y: vAxis.y, z: vAxis.z },
+        nAxis: { x: nAxis.x, y: nAxis.y, z: nAxis.z },
+        suggestedDepth: 15
+      };
+      state.customPlanes.push(cp);
+      return cp;
     }
 
     function shiftSketchBySceneDelta(sketch, dx, dz) {
@@ -1248,8 +1416,8 @@
         );
       } else if (shapeType === 'circle') {
         const r = Math.max(0.5, params.w / 2 - insetAmount);
-        for (let i = 0; i < 48; i++) {
-          const a = (i / 48) * Math.PI * 2;
+        for (let i = 0; i < 64; i++) {
+          const a = (i / 64) * Math.PI * 2;
           pts.push({ u: params.u + Math.cos(a) * r, v: params.v + Math.sin(a) * r });
         }
       } else if (shapeType === 'hex') {
@@ -1264,12 +1432,12 @@
         const diam = Math.max(1, Math.min(params.w, params.h) - insetAmount * 2);
         const r = Math.max(0.5, diam / 2);
         const straightHalf = Math.max(0, (totalL - diam) / 2);
-        for (let i = 0; i <= 20; i++) {
-          const a = -Math.PI / 2 + (i / 20) * Math.PI;
+        for (let i = 0; i <= 28; i++) {
+          const a = -Math.PI / 2 + (i / 28) * Math.PI;
           pts.push({ u: params.u + straightHalf + Math.cos(a) * r, v: params.v + Math.sin(a) * r });
         }
-        for (let i = 0; i <= 20; i++) {
-          const a = Math.PI / 2 + (i / 20) * Math.PI;
+        for (let i = 0; i <= 28; i++) {
+          const a = Math.PI / 2 + (i / 28) * Math.PI;
           pts.push({ u: params.u - straightHalf + Math.cos(a) * r, v: params.v + Math.sin(a) * r });
         }
       } else if (shapeType === 'poly' && Array.isArray(sketch.points2D)) {
@@ -1358,27 +1526,79 @@
     }
 
     // Clean watertight per-face geometry (never distorts whole body; supports inner fillet/chamfer AND outer root fillet for 3D print joints!)
-    function buildCleanLayeredExtrude(sketch, depth, edgeMode, edgeAmt, faceTarget, draftDeg, cutHoles) {
-      const isRect = sketch && sketch.shapeType === 'rect';
-      const isSideFace = ['left', 'right', 'front', 'back'].includes(faceTarget);
+    function offsetHole2D(orderedCW, flareAmt) {
+      if (flareAmt <= 1e-4) return orderedCW.map(p => ({ u: p.u, v: p.v }));
+      const n = orderedCW.length;
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const prev = orderedCW[(i - 1 + n) % n];
+        const curr = orderedCW[i];
+        const next = orderedCW[(i + 1) % n];
+        const e1u = curr.u - prev.u, e1v = curr.v - prev.v;
+        const l1 = Math.hypot(e1u, e1v) || 1;
+        // For CW hole, outward normal (away from hole center, into solid) is (-ev, eu)
+        const n1u = -e1v / l1, n1v = e1u / l1;
+        const e2u = next.u - curr.u, e2v = next.v - curr.v;
+        const l2 = Math.hypot(e2u, e2v) || 1;
+        const n2u = -e2v / l2, n2v = e2u / l2;
+        let nu = n1u + n2u, nv = n1v + n2v;
+        const nl = Math.hypot(nu, nv);
+        if (nl < 1e-6) {
+          out.push({ u: curr.u + n1u * flareAmt, v: curr.v + n1v * flareAmt });
+        } else {
+          nu /= nl; nv /= nl;
+          const dot = nu * n1u + nv * n1v;
+          const scale = Math.min(2.0, 1 / Math.max(0.5, dot));
+          out.push({ u: curr.u + nu * flareAmt * scale, v: curr.v + nv * flareAmt * scale });
+        }
+      }
+      return out;
+    }
 
-      // 1. SIDE FACE (left/right/front/back) on a rectangle: reorient ONLY that face to +Z, apply operation ONLY to that face, and rotate back!
-      if (isRect && isSideFace && (!cutHoles || cutHoles.length === 0)) {
+    function buildCleanLayeredExtrude(sketch, depth, edgeOpsOrMode, edgeAmtLegacy, faceTargetLegacy, draftDeg, cutHoles) {
+      let edgeOps = {};
+      if (edgeOpsOrMode && typeof edgeOpsOrMode === 'object') {
+        edgeOps = edgeOpsOrMode;
+      } else {
+        const m = edgeOpsOrMode || 'none';
+        const a = Number(edgeAmtLegacy || 0);
+        const ft = faceTargetLegacy || 'top';
+        if (ft === 'both') {
+          edgeOps = { top: { mode: m, amount: a }, bottom: { mode: m, amount: a } };
+        } else {
+          edgeOps = { [ft]: { mode: m, amount: a } };
+        }
+      }
+
+      const normOp = (op) => (op && op.mode && op.mode !== 'none' && Number(op.amount) > 0.05)
+        ? { mode: op.mode, amount: Number(op.amount) }
+        : { mode: 'none', amount: 0 };
+
+      let topOp = normOp(edgeOps.top);
+      let botOp = normOp(edgeOps.bottom);
+      let hTopOp = normOp(edgeOps.holes_top);
+      let hBotOp = normOp(edgeOps.holes_bottom);
+      const sideFace = ['left', 'right', 'front', 'back'].find(f => normOp(edgeOps[f]).amount > 0);
+
+      // 1. SIDE FACE (left/right/front/back) on a rectangle when no top/bottom/hole ops active
+      const isRect = sketch && sketch.shapeType === 'rect';
+      if (isRect && sideFace && topOp.amount === 0 && botOp.amount === 0 && hTopOp.amount === 0 && hBotOp.amount === 0 && (!cutHoles || cutHoles.length === 0)) {
+        const sOp = normOp(edgeOps[sideFace]);
         const w = sketch.params.w, h = sketch.params.h;
         const cu = sketch.params.u, cv = sketch.params.v;
         let tmpW = w, tmpH = depth, tmpDepth = h;
-        if (faceTarget === 'left' || faceTarget === 'right') {
+        if (sideFace === 'left' || sideFace === 'right') {
           tmpW = h; tmpH = depth; tmpDepth = w;
         }
         const tmpSketch = { shapeType: 'rect', params: { u: 0, v: 0, w: tmpW, h: tmpH } };
-        const tmpGeo = buildCleanLayeredExtrude(tmpSketch, tmpDepth, edgeMode, edgeAmt, 'top', draftDeg, []);
+        const tmpGeo = buildCleanLayeredExtrude(tmpSketch, tmpDepth, { top: sOp }, 0, 'top', draftDeg, []);
         const pos = tmpGeo.attributes.position;
         for (let i = 0; i < pos.count; i++) {
           const lx = pos.getX(i), ly = pos.getY(i), lz = pos.getZ(i);
           let ox = 0, oy = 0, oz = 0;
-          if (faceTarget === 'right') { ox = cu - w / 2 + lz; oy = cv + lx; oz = ly + depth / 2; }
-          else if (faceTarget === 'left') { ox = cu + w / 2 - lz; oy = cv - lx; oz = ly + depth / 2; }
-          else if (faceTarget === 'back') { ox = cu + lx; oy = cv - h / 2 + lz; oz = ly + depth / 2; }
+          if (sideFace === 'right') { ox = cu - w / 2 + lz; oy = cv + lx; oz = ly + depth / 2; }
+          else if (sideFace === 'left') { ox = cu + w / 2 - lz; oy = cv - lx; oz = ly + depth / 2; }
+          else if (sideFace === 'back') { ox = cu + lx; oy = cv - h / 2 + lz; oz = ly + depth / 2; }
           else { ox = cu - lx; oy = cv + h / 2 - lz; oz = ly + depth / 2; }
           pos.setXYZ(i, ox, oy, oz);
         }
@@ -1390,99 +1610,68 @@
       const rawPts = generate2DPointsForSketch(sketch, 0);
       if (rawPts.length < 3) return new THREE.BoxGeometry(10, 10, 10);
 
-      // 2. BOTH (Все грани) with no outer_fillet: use ExtrudeGeometry
-      if (faceTarget === 'both' && edgeMode !== 'outer_fillet') {
-        const useBevel = edgeMode !== 'none' && edgeAmt > 0.05;
-        const insetPts = generate2DPointsForSketch(sketch, useBevel ? edgeAmt : 0);
-        const shape = new THREE.Shape(insetPts.map(p => new THREE.Vector2(p.u, p.v)));
-        (cutHoles || []).forEach(hp => {
-          if (hp.length >= 3) shape.holes.push(new THREE.Path(hp.slice().reverse().map(p => new THREE.Vector2(p.u, p.v))));
-        });
-        const effD = Math.max(0.5, depth - (useBevel ? edgeAmt * 2 : 0));
-        const g = new THREE.ExtrudeGeometry(shape, {
-          steps: 8, depth: effD, bevelEnabled: useBevel,
-          bevelThickness: useBevel ? edgeAmt : 0, bevelSize: useBevel ? edgeAmt : 0,
-          bevelSegments: edgeMode === 'fillet' ? 6 : 1
-        });
-        if (useBevel) g.translate(0, 0, edgeAmt);
-        if (Math.abs(draftDeg) > 0.01) {
-          const tanA = Math.tan((Math.abs(draftDeg) * Math.PI) / 180);
-          const cU = sketch.params ? sketch.params.u : 0, cV = sketch.params ? sketch.params.v : 0;
-          const pos = g.attributes.position;
-          for (let i = 0; i < pos.count; i++) {
-            const z = pos.getZ(i);
-            const taperZ = draftDeg > 0 ? z : (depth - z);
-            const sh = shiftVertexInwardClean(pos.getX(i), pos.getY(i), cU, cV, sketch, taperZ * tanA);
-            pos.setX(i, sh.x); pos.setY(i, sh.y);
-          }
-          pos.needsUpdate = true;
-        }
-        g.computeVertexNormals();
-        return g;
+      // Clamp simultaneous top + bottom amounts so Z slices never invert
+      let topAmt = topOp.amount;
+      let botAmt = botOp.amount;
+      if (topAmt + botAmt > depth - 0.1) {
+        const scale = (depth - 0.1) / (topAmt + botAmt);
+        topAmt *= scale;
+        botAmt *= scale;
       }
 
-      // 3. SINGLE FACE (top or bottom): Clean Watertight Lofted Mesh (supports inner fillet, chamfer, AND outward joint root fillet 'outer_fillet'!)
-      const hasEdge = edgeMode !== 'none' && edgeAmt > 0.05;
-      const isOuter = edgeMode === 'outer_fillet';
-      const segs = hasEdge ? ((edgeMode === 'fillet' || isOuter) ? 6 : 1) : 0;
       const tanDraft = Math.abs(draftDeg) > 0.01 ? Math.tan((Math.abs(draftDeg) * Math.PI) / 180) : 0;
-
       const slices = [];
       const addSlice = (zVal, edgeInset) => {
         const taperZ = draftDeg > 0 ? zVal : (draftDeg < 0 ? (depth - zVal) : 0);
         const totalInset = edgeInset + taperZ * tanDraft;
-        // Negative totalInset expands outward (used for outer_fillet joint reinforcement!)
         slices.push({ z: zVal, pts: generate2DPointsForSketch(sketch, totalInset) });
       };
 
-      const targetEnd = (faceTarget === 'bottom') ? 'bottom' : 'top';
-
-      if (!hasEdge) {
-        addSlice(0, 0);
-        addSlice(depth, 0);
-      } else if (isOuter) {
-        // OUTWARD CONCAVE ROOT FILLET (Галтель усиления в месте стыка): flares OUTWARD smoothly at the selected face!
-        if (targetEnd === 'top' || faceTarget === 'both') {
-          addSlice(0, 0);
-          addSlice(depth - edgeAmt, 0);
-          for (let sIdx = 1; sIdx <= segs; sIdx++) {
-            const t = sIdx / segs; // 0 -> 1
-            const ang = t * (Math.PI / 2);
-            const zVal = (depth - edgeAmt) + t * edgeAmt;
-            // Concave flare outward: negative inset from 0 to -edgeAmt
-            const outwardFlare = -(1 - Math.cos(ang)) * edgeAmt;
-            addSlice(zVal, outwardFlare);
-          }
-        } else { // 'bottom'
-          for (let sIdx = 0; sIdx < segs; sIdx++) {
-            const t = sIdx / segs;
-            const ang = (1 - t) * (Math.PI / 2);
-            const zVal = t * edgeAmt;
-            const outwardFlare = -(1 - Math.cos(ang)) * edgeAmt;
-            addSlice(zVal, outwardFlare);
-          }
-          addSlice(edgeAmt, 0);
-          addSlice(depth, 0);
-        }
-      } else if (targetEnd === 'top') {
-        addSlice(0, 0);
-        addSlice(depth - edgeAmt, 0);
-        for (let sIdx = 1; sIdx <= segs; sIdx++) {
-          const t = sIdx / segs;
-          const ang = t * (Math.PI / 2);
-          const zVal = (depth - edgeAmt) + (edgeMode === 'fillet' ? Math.sin(ang) * edgeAmt : t * edgeAmt);
-          const ins = edgeMode === 'fillet' ? (1 - Math.cos(ang)) * edgeAmt : t * edgeAmt;
-          addSlice(zVal, ins);
-        }
-      } else { // 'bottom'
-        for (let sIdx = 0; sIdx < segs; sIdx++) {
-          const t = sIdx / segs;
+      // Bottom Z profile (0 -> botAmt)
+      if (botAmt > 0.05) {
+        const segsB = (botOp.mode === 'fillet' || botOp.mode === 'outer_fillet') ? 10 : 1;
+        for (let sIdx = 0; sIdx < segsB; sIdx++) {
+          const t = sIdx / segsB;
           const ang = (1 - t) * (Math.PI / 2);
-          const zVal = edgeMode === 'fillet' ? (edgeAmt - Math.sin(ang) * edgeAmt) : t * edgeAmt;
-          const ins = edgeMode === 'fillet' ? (1 - Math.cos(ang)) * edgeAmt : (1 - t) * edgeAmt;
+          let zVal, ins;
+          if (botOp.mode === 'outer_fillet') {
+            zVal = t * botAmt;
+            ins = -(1 - Math.cos(ang)) * botAmt;
+          } else if (botOp.mode === 'fillet') {
+            zVal = botAmt - Math.sin(ang) * botAmt;
+            ins = (1 - Math.cos(ang)) * botAmt;
+          } else {
+            zVal = t * botAmt;
+            ins = (1 - t) * botAmt;
+          }
           addSlice(zVal, ins);
         }
-        addSlice(edgeAmt, 0);
+        addSlice(botAmt, 0);
+      } else {
+        addSlice(0, 0);
+      }
+
+      // Top Z profile (depth - topAmt -> depth)
+      if (topAmt > 0.05) {
+        if (depth - topAmt > botAmt + 1e-4) addSlice(depth - topAmt, 0);
+        const segsT = (topOp.mode === 'fillet' || topOp.mode === 'outer_fillet') ? 10 : 1;
+        for (let sIdx = 1; sIdx <= segsT; sIdx++) {
+          const t = sIdx / segsT;
+          const ang = t * (Math.PI / 2);
+          let zVal, ins;
+          if (topOp.mode === 'outer_fillet') {
+            zVal = (depth - topAmt) + t * topAmt;
+            ins = -(1 - Math.cos(ang)) * topAmt;
+          } else if (topOp.mode === 'fillet') {
+            zVal = (depth - topAmt) + Math.sin(ang) * topAmt;
+            ins = (1 - Math.cos(ang)) * topAmt;
+          } else {
+            zVal = (depth - topAmt) + t * topAmt;
+            ins = t * topAmt;
+          }
+          addSlice(zVal, ins);
+        }
+      } else {
         addSlice(depth, 0);
       }
 
@@ -1509,35 +1698,81 @@
         }
       }
 
-      // Inner side walls for every hole in cutHoles (critical for watertight manifold STL in slicers!)
+      // Inner side walls with optional top/bottom hole flare (Развальцовка / зенковка отверстий!)
       const zBot = slices[0].z;
       const zTop = slices[slices.length - 1].z;
+      let hTopAmt = hTopOp.amount;
+      let hBotAmt = hBotOp.amount;
+      if (hTopAmt + hBotAmt > depth - 0.1) {
+        const hScale = (depth - 0.1) / (hTopAmt + hBotAmt);
+        hTopAmt *= hScale;
+        hBotAmt *= hScale;
+      }
+
+      const bottomCapHoles = [];
+      const topCapHoles = [];
+
       (cutHoles || []).forEach(hp => {
         if (hp.length < 3) return;
-        // Compute signed 2D area of hp to ensure hole wall normals point INWARD toward hole center
         let area2 = 0;
         for (let i = 0; i < hp.length; i++) {
           const j = (i + 1) % hp.length;
           area2 += hp[i].u * hp[j].v - hp[j].u * hp[i].v;
         }
         const ordered = area2 > 0 ? hp.slice().reverse() : hp.slice();
-        const n = ordered.length;
-        for (let i = 0; i < n; i++) {
-          const j = (i + 1) % n;
-          const p00 = { u: ordered[i].u, v: ordered[i].v, z: zBot };
-          const p01 = { u: ordered[j].u, v: ordered[j].v, z: zBot };
-          const p10 = { u: ordered[i].u, v: ordered[i].v, z: zTop };
-          const p11 = { u: ordered[j].u, v: ordered[j].v, z: zTop };
-          pushTri(p00, p01, p11);
-          pushTri(p00, p11, p10);
+        const hSlices = [];
+
+        if (hBotAmt > 0.05) {
+          const segsHB = (hBotOp.mode === 'fillet' || hBotOp.mode === 'outer_fillet') ? 10 : 1;
+          for (let sIdx = 0; sIdx < segsHB; sIdx++) {
+            const t = sIdx / segsHB;
+            const ang = (1 - t) * (Math.PI / 2);
+            const zVal = (hBotOp.mode === 'fillet' || hBotOp.mode === 'outer_fillet') ? (hBotAmt - Math.sin(ang) * hBotAmt) : t * hBotAmt;
+            const flare = (hBotOp.mode === 'fillet' || hBotOp.mode === 'outer_fillet') ? (1 - Math.cos(ang)) * hBotAmt : (1 - t) * hBotAmt;
+            hSlices.push({ z: zVal, pts: offsetHole2D(ordered, flare) });
+          }
+          hSlices.push({ z: hBotAmt, pts: ordered });
+        } else {
+          hSlices.push({ z: zBot, pts: ordered });
         }
+
+        if (hTopAmt > 0.05) {
+          if (depth - hTopAmt > hBotAmt + 1e-4) hSlices.push({ z: depth - hTopAmt, pts: ordered });
+          const segsHT = (hTopOp.mode === 'fillet' || hTopOp.mode === 'outer_fillet') ? 10 : 1;
+          for (let sIdx = 1; sIdx <= segsHT; sIdx++) {
+            const t = sIdx / segsHT;
+            const ang = t * (Math.PI / 2);
+            const zVal = (depth - hTopAmt) + ((hTopOp.mode === 'fillet' || hTopOp.mode === 'outer_fillet') ? Math.sin(ang) * hTopAmt : t * hTopAmt);
+            const flare = (hTopOp.mode === 'fillet' || hTopOp.mode === 'outer_fillet') ? (1 - Math.cos(ang)) * hTopAmt : t * hTopAmt;
+            hSlices.push({ z: zVal, pts: offsetHole2D(ordered, flare) });
+          }
+        } else {
+          hSlices.push({ z: zTop, pts: ordered });
+        }
+
+        for (let k = 0; k < hSlices.length - 1; k++) {
+          const s0 = hSlices[k], s1 = hSlices[k + 1];
+          const n = s0.pts.length;
+          for (let i = 0; i < n; i++) {
+            const j = (i + 1) % n;
+            const p00 = { u: s0.pts[i].u, v: s0.pts[i].v, z: s0.z };
+            const p01 = { u: s0.pts[j].u, v: s0.pts[j].v, z: s0.z };
+            const p10 = { u: s1.pts[i].u, v: s1.pts[i].v, z: s1.z };
+            const p11 = { u: s1.pts[j].u, v: s1.pts[j].v, z: s1.z };
+            pushTri(p00, p01, p11);
+            pushTri(p00, p11, p10);
+          }
+        }
+
+        bottomCapHoles.push(hSlices[0].pts);
+        topCapHoles.push(hSlices[hSlices.length - 1].pts);
       });
 
-      // Caps (also support cutHoles on top/bottom caps!)
-      const buildCapTris = (slice, flip) => {
+      // Caps (using exact flared hole contours on top and bottom so mesh stays 100% Manifold!)
+      const buildCapTris = (slice, flip, capHoles) => {
         const sh = new THREE.Shape(slice.pts.map(p => new THREE.Vector2(p.u, p.v)));
-        (cutHoles || []).forEach(hp => {
-          if (hp.length >= 3) sh.holes.push(new THREE.Path(hp.slice().reverse().map(p => new THREE.Vector2(p.u, p.v))));
+        (capHoles || []).forEach(hp => {
+          if (hp.length >= 3) sh.holes.push(new THREE.Path(hp.map(p => new THREE.Vector2(p.u, p.v))));
         });
         const cap = new THREE.ShapeGeometry(sh);
         const pos = cap.attributes.position, idx = cap.index;
@@ -1548,8 +1783,8 @@
           }
         }
       };
-      buildCapTris(slices[0], true);
-      buildCapTris(slices[slices.length - 1], false);
+      buildCapTris(slices[0], true, bottomCapHoles);
+      buildCapTris(slices[slices.length - 1], false, topCapHoles);
 
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
@@ -1721,7 +1956,7 @@
     function csgSubtractGeometry(solidGeo, cutterGeo) {
       const aPolys = geometryToCSGPolygons(solidGeo);
       const bPolys = geometryToCSGPolygons(cutterGeo);
-      if (aPolys.length === 0 || bPolys.length === 0 || aPolys.length > 3500) return solidGeo;
+      if (aPolys.length === 0 || bPolys.length === 0 || aPolys.length > 8000) return solidGeo;
       const a = new CSGBSPNode(aPolys);
       const b = new CSGBSPNode(bPolys);
       a.invert();
@@ -1827,7 +2062,7 @@
         });
       }
 
-      let geom = buildCleanLayeredExtrude(sketch, depth, edgeMode, edgeAmt, faceTarget, Number(body.draftAngle) || 0, cutHoles);
+      let geom = buildCleanLayeredExtrude(sketch, depth, ensureBodyEdgeOps(body), 0, body.faceTarget || 'top', Number(body.draftAngle) || 0, cutHoles);
       orientExtrudedGeometryToPlane(geom, body.plane, body.offset, depth, body.direction || 'forward');
       if (body.shiftX || body.shiftY || body.shiftZ) {
         geom.translate(body.shiftX || 0, body.shiftY || 0, body.shiftZ || 0);
@@ -2031,6 +2266,122 @@
       else mergeBodiesIntoGroup();
     });
 
+    function computeCreasedNormals(geometry, creaseAngleDeg = 42) {
+      if (!geometry || !geometry.attributes || !geometry.attributes.position) return geometry;
+      const g = geometry.index ? geometry.toNonIndexed() : geometry;
+      const pos = g.attributes.position;
+      const vertCount = pos.count;
+      const triCount = Math.floor(vertCount / 3);
+      if (triCount === 0) return g;
+
+      const faceNormals = new Float32Array(triCount * 3);
+      const areaNormals = new Float32Array(triCount * 3);
+      const vMap = new Map();
+
+      const keyOf = (x, y, z) => `${Math.round(x * 1e4)}_${Math.round(y * 1e4)}_${Math.round(z * 1e4)}`;
+
+      for (let t = 0; t < triCount; t++) {
+        const i0 = t * 3, i1 = t * 3 + 1, i2 = t * 3 + 2;
+        const ax = pos.getX(i0), ay = pos.getY(i0), az = pos.getZ(i0);
+        const bx = pos.getX(i1), by = pos.getY(i1), bz = pos.getZ(i1);
+        const cx = pos.getX(i2), cy = pos.getY(i2), cz = pos.getZ(i2);
+
+        const abx = bx - ax, aby = by - ay, abz = bz - az;
+        const acx = cx - ax, acy = cy - ay, acz = cz - az;
+        const nx = aby * acz - abz * acy;
+        const ny = abz * acx - abx * acz;
+        const nz = abx * acy - aby * acx;
+
+        areaNormals[t * 3] = nx;
+        areaNormals[t * 3 + 1] = ny;
+        areaNormals[t * 3 + 2] = nz;
+
+        const len = Math.hypot(nx, ny, nz) || 1;
+        faceNormals[t * 3] = nx / len;
+        faceNormals[t * 3 + 1] = ny / len;
+        faceNormals[t * 3 + 2] = nz / len;
+
+        for (let k = 0; k < 3; k++) {
+          const vi = t * 3 + k;
+          const key = keyOf(pos.getX(vi), pos.getY(vi), pos.getZ(vi));
+          let arr = vMap.get(key);
+          if (!arr) { arr = []; vMap.set(key, arr); }
+          arr.push(t);
+        }
+      }
+
+      const cosThresh = Math.cos((creaseAngleDeg * Math.PI) / 180);
+      const normals = new Float32Array(vertCount * 3);
+
+      for (let t = 0; t < triCount; t++) {
+        const fnx = faceNormals[t * 3], fny = faceNormals[t * 3 + 1], fnz = faceNormals[t * 3 + 2];
+        for (let k = 0; k < 3; k++) {
+          const vi = t * 3 + k;
+          const key = keyOf(pos.getX(vi), pos.getY(vi), pos.getZ(vi));
+          const list = vMap.get(key);
+          let sx = 0, sy = 0, sz = 0;
+          for (let m = 0; m < list.length; m++) {
+            const ot = list[m];
+            const dot = fnx * faceNormals[ot * 3] + fny * faceNormals[ot * 3 + 1] + fnz * faceNormals[ot * 3 + 2];
+            if (dot >= cosThresh) {
+              sx += areaNormals[ot * 3];
+              sy += areaNormals[ot * 3 + 1];
+              sz += areaNormals[ot * 3 + 2];
+            }
+          }
+          const len = Math.hypot(sx, sy, sz);
+          if (len > 1e-12) {
+            normals[vi * 3] = sx / len;
+            normals[vi * 3 + 1] = sy / len;
+            normals[vi * 3 + 2] = sz / len;
+          } else {
+            normals[vi * 3] = fnx;
+            normals[vi * 3 + 1] = fny;
+            normals[vi * 3 + 2] = fnz;
+          }
+        }
+      }
+
+      g.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+      return g;
+    }
+
+    function countOpenEdges(geometry) {
+      if (!geometry || !geometry.attributes || !geometry.attributes.position) return 0;
+      const g = geometry.index ? geometry.toNonIndexed() : geometry;
+      const pos = g.attributes.position;
+      const triCount = Math.floor(pos.count / 3);
+      const edgeCounts = new Map();
+      const vKey = (idx) => `${Math.round(pos.getX(idx) * 1e4)},${Math.round(pos.getY(idx) * 1e4)},${Math.round(pos.getZ(idx) * 1e4)}`;
+      for (let t = 0; t < triCount; t++) {
+        const k0 = vKey(t * 3), k1 = vKey(t * 3 + 1), k2 = vKey(t * 3 + 2);
+        if (k0 === k1 || k1 === k2 || k2 === k0) continue;
+        const pairs = [[k0, k1], [k1, k2], [k2, k0]];
+        for (let p = 0; p < 3; p++) {
+          const [a, b] = pairs[p];
+          const ek = a < b ? `${a}|${b}` : `${b}|${a}`;
+          const prev = edgeCounts.get(ek) || 0;
+          edgeCounts.set(ek, prev + (a < b ? 1 : -1));
+        }
+      }
+      let open = 0;
+      edgeCounts.forEach(val => { if (val !== 0) open += Math.abs(val); });
+      return open;
+    }
+
+    function checkAllBodiesManifold() {
+      let totalOpen = 0;
+      let solidCount = 0;
+      state.bodies.forEach(body => {
+        if (body.operation === 'cut' || body.operation === 'mutual') return;
+        const g = body.computedGeometry;
+        if (!g || !g.attributes || !g.attributes.position || g.attributes.position.count === 0) return;
+        solidCount++;
+        totalOpen += countOpenEdges(g);
+      });
+      return { totalOpen, isManifold: solidCount > 0 && totalOpen === 0, solidCount };
+    }
+
     function rebuildBodies3D() {
       while (bodies3DGroup.children.length) {
         const ch = bodies3DGroup.children[0];
@@ -2038,22 +2389,29 @@
         bodies3DGroup.remove(ch);
       }
       state.bodies.forEach(body => {
-        const geom = buildBodyGeometry(body);
+        let geom = buildBodyGeometry(body);
+        if (body.operation !== 'cut') geom = computeCreasedNormals(geom, 42);
         body.computedGeometry = geom;
         const isDraggingThis = state.dragModeActive && state.dragTargetType === 'body' && state.dragTargetId === body.id;
         const isSel = body.id === state.selectedBodyId;
         const isGroup = body.type === 'group';
+        const baseHex = body.color || (isGroup ? '#8b5cf6' : (state.defaultBodyColor || '#3b82f6'));
+        const baseCol = new THREE.Color(baseHex);
+        const luma = 0.2126 * baseCol.r + 0.7152 * baseCol.g + 0.0722 * baseCol.b;
         const mat = body.operation === 'cut'
           ? new THREE.MeshBasicMaterial({ color: 0xf43f5e, wireframe: true, transparent: true, opacity: isSel ? 0.6 : 0.0 })
           : new THREE.MeshStandardMaterial({
-              color: isDraggingThis ? 0xf59e0b : (isSel ? (isGroup ? 0xa78bfa : 0x60a5fa) : (isGroup ? 0x8b5cf6 : 0x3b82f6)),
-              roughness: 0.35, metalness: 0.15, polygonOffset: true, polygonOffsetFactor: 1
+              color: isDraggingThis ? 0xf59e0b : baseCol,
+              emissive: isSel ? 0x1e3a8a : 0x000000,
+              emissiveIntensity: isSel ? 0.22 : 0,
+              roughness: 0.34, metalness: 0.10, polygonOffset: true, polygonOffsetFactor: 1
             });
         const mesh = new THREE.Mesh(geom, mat);
         mesh.userData = { isBody3D: true, bodyId: body.id };
+        const defaultEdgeCol = luma < 0.18 ? 0x64748b : 0x1e293b;
         mesh.add(new THREE.LineSegments(
-          new THREE.EdgesGeometry(geom, 32),
-          new THREE.LineBasicMaterial({ color: isDraggingThis ? 0xfef08a : (isSel ? 0xfbbf24 : (body.operation === 'cut' ? 0xfb7185 : 0x1e293b)), transparent: body.operation === 'cut' && !isSel, opacity: body.operation === 'cut' && !isSel ? 0 : 1 })
+          new THREE.EdgesGeometry(geom, 42),
+          new THREE.LineBasicMaterial({ color: isDraggingThis ? 0xfef08a : (isSel ? 0xfbbf24 : (body.operation === 'cut' ? 0xfb7185 : defaultEdgeCol)), transparent: body.operation === 'cut' && !isSel, opacity: body.operation === 'cut' && !isSel ? 0 : 1 })
         ));
         bodies3DGroup.add(mesh);
       });
@@ -2064,6 +2422,20 @@
 
     function updateBoundingBoxReadout() {
       const addBodies = state.bodies.filter(b => ((b.operation === 'add' || b.operation === 'mutual') || b.operation === 'mutual') && b.computedGeometry);
+      const badge = document.getElementById('manifoldBadge');
+      if (badge) {
+        const mf = checkAllBodiesManifold();
+        if (mf.solidCount === 0) {
+          badge.className = 'px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-700/50 text-slate-300 border border-white/10';
+          badge.textContent = 'Нет тел';
+        } else if (mf.isManifold) {
+          badge.className = 'px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+          badge.textContent = '✓ Manifold';
+        } else {
+          badge.className = 'px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+          badge.textContent = `⚠ Открытых рёбер: ${mf.totalOpen}`;
+        }
+      }
       const el = document.getElementById('bboxValue');
       if (addBodies.length === 0) { el.textContent = '0×0×0 мм'; return; }
       const box = new THREE.Box3();
@@ -2163,26 +2535,44 @@
             grpBtn.className = 'px-2 py-1 rounded-xl bg-purple-600/25 text-purple-300 border border-purple-500/30 text-[11px] font-semibold';
           }
 
+          const ops = ensureBodyEdgeOps(b);
+          const curTarget = b.faceTarget || 'top';
+          const curOp = curTarget === 'both' ? (ops.top || { mode: 'none', amount: 0 }) : (ops[curTarget] || { mode: 'none', amount: 0 });
+          const faceBaseLabels = { top: 'Верх', bottom: 'Низ', front: 'Перед', back: 'Зад', left: 'Лево', right: 'Право', holes_top: 'Отв.В', holes_bottom: 'Отв.Н', both: 'Все' };
+
           document.querySelectorAll('.edge-mode-btn').forEach(btn => {
-            const act = btn.dataset.edgemode === (b.edgeMode || 'none');
+            const act = btn.dataset.edgemode === (curOp.mode || 'none');
             btn.className = `edge-mode-btn py-1 rounded-lg text-[10px] font-semibold ${act ? 'bg-blue-600 text-white' : 'text-slate-300'}`;
           });
           document.querySelectorAll('.face-target-btn').forEach(btn => {
-            const act = btn.dataset.facetarget === (b.faceTarget || 'top');
-            btn.className = `face-target-btn py-1 rounded-lg text-[10px] font-semibold ${act ? 'bg-emerald-600 text-white' : 'text-slate-300'}`;
+            const ft = btn.dataset.facetarget;
+            const act = ft === curTarget;
+            const fOp = ops[ft];
+            const hasVal = fOp && fOp.mode !== 'none' && Number(fOp.amount) > 0;
+            const baseTxt = faceBaseLabels[ft] || ft;
+            btn.textContent = hasVal ? `${baseTxt}·${Number(fOp.amount).toFixed(0)}` : baseTxt;
+            const isHole = ft === 'holes_top' || ft === 'holes_bottom';
+            const spanCls = ft === 'both' ? 'col-span-2 sm:col-span-1' : '';
+            btn.className = `face-target-btn py-1 px-1 rounded-lg text-[10px] font-semibold truncate ${spanCls} ${act ? 'bg-emerald-600 text-white' : (hasVal ? 'bg-blue-500/20 text-blue-200 ring-1 ring-blue-400/40' : (isHole ? 'text-cyan-300' : 'text-slate-300'))}`;
           });
           document.querySelectorAll('.body-dir-btn').forEach(btn => {
             const act = btn.dataset.bdir === (b.direction || 'forward');
             btn.className = `body-dir-btn px-2 py-1 rounded-lg text-[10px] font-semibold ${act ? 'bg-blue-600 text-white' : 'text-slate-300'}`;
           });
 
-          const edgeVal = Number(b.edgeAmount || 0);
+          const edgeVal = Number(curOp.amount || 0);
           document.getElementById('rngEdgeAmount').value = edgeVal;
           document.getElementById('inpEdgeAmount').value = edgeVal.toFixed(1);
           document.getElementById('rngDraftAngle').value = b.draftAngle || 0;
           document.getElementById('valDraftAngle').textContent = `${b.draftAngle || 0}°`;
           document.getElementById('rngBodyDepth').value = b.depth || 15;
           document.getElementById('valBodyDepth').textContent = `${b.depth || 15}мм`;
+          const curColor = (b.color || state.defaultBodyColor || '#3b82f6').toLowerCase();
+          document.getElementById('inpBodyColor').value = curColor;
+          document.querySelectorAll('.body-color-btn').forEach(btn => {
+            const act = btn.dataset.bcolor.toLowerCase() === curColor;
+            btn.className = `body-color-btn w-5 h-5 rounded-full bg-[${btn.dataset.bcolor}] shrink-0 ${act ? 'ring-2 ring-white scale-110' : 'border border-white/30'}`;
+          });
           updateStepperUI(3);
           return;
         }
@@ -2401,6 +2791,67 @@
       }
 
       if (state.dragModeActive) return;
+
+      // Custom Plane 2-Point Picker Mode (A -> B with 3D corner vertex snap)
+      if (state.planePickMode) {
+        let hitPt = null;
+        if (picked && picked.hit && picked.hit.point) {
+          hitPt = picked.hit.point.clone();
+          // Snap to nearest triangle vertex within 3.5 mm for exact corner picking
+          const obj = picked.hit.object;
+          const face = picked.hit.face;
+          if (obj && obj.geometry && obj.geometry.attributes && obj.geometry.attributes.position && face) {
+            const pos = obj.geometry.attributes.position;
+            let bestDist = 3.5;
+            let bestV = null;
+            [face.a, face.b, face.c].forEach(vi => {
+              const v = new THREE.Vector3(pos.getX(vi), pos.getY(vi), pos.getZ(vi)).applyMatrix4(obj.matrixWorld);
+              const d = v.distanceTo(hitPt);
+              if (d < bestDist) { bestDist = d; bestV = v; }
+            });
+            if (bestV) hitPt = bestV;
+          }
+        } else {
+          hitPt = getHitBedPoint(e);
+        }
+        if (hitPt) {
+          state.planePickPts.push(hitPt);
+          while (highlightGroup.children.length) highlightGroup.remove(highlightGroup.children[0]);
+          state.planePickPts.forEach(p => {
+            const dot = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), new THREE.MeshBasicMaterial({ color: 0x22d3ee, depthTest: false }));
+            dot.position.copy(p);
+            highlightGroup.add(dot);
+          });
+          if (state.planePickPts.length === 1) {
+            showToast('Точка A выбрана (привязка к углу). Тапните точку B.');
+          } else if (state.planePickPts.length >= 2) {
+            const [pA, pB] = state.planePickPts;
+            const line = new THREE.Line(
+              new THREE.BufferGeometry().setFromPoints([pA, pB]),
+              new THREE.LineBasicMaterial({ color: 0x22d3ee, depthTest: false })
+            );
+            highlightGroup.add(line);
+            state.planePickMode = false;
+            state.planePickPts = [];
+            pushHistory();
+            const cp = createCustomPlaneFrom2Points(pA, pB);
+            if (!cp) {
+              showToast('Точки совпадают — выберите разные углы');
+            } else {
+              buildReferencePlanes();
+              renderCustomPlanesList();
+              if (cp.suggestedDepth && document.getElementById('rngExtrudeDist')) {
+                const dVal = Math.min(120, Math.max(1, Math.round(cp.suggestedDepth)));
+                document.getElementById('rngExtrudeDist').value = dVal;
+                document.getElementById('rngExtrudeDist').dispatchEvent(new Event('input'));
+              }
+              showToast(`Создана ${cp.name} — рисуйте отверстие в (0,0)`);
+              openSketcherOnPlane(cp.id, 0);
+            }
+          }
+        }
+        return;
+      }
 
       // 3D Caliper Measure Mode: pick 2 points on 3D bodies or bed
       if (state.measureMode) {
@@ -2646,7 +3097,8 @@
         }
       }
 
-      document.getElementById('sketchPlaneBadge').textContent = `${planeCode} (${offsetMm.toFixed(1)} мм)`;
+      const _cp = (state.customPlanes || []).find(p => p.id === planeCode);
+      document.getElementById('sketchPlaneBadge').textContent = _cp ? `${_cp.name}` : `${planeCode} (${offsetMm.toFixed(1)} мм)`;
       sketchOverlay.classList.remove('hidden');
       updateStepperUI(2);
       resizeSketchCanvas();
@@ -3654,13 +4106,54 @@
       }
     }
 
+    function ensureBodyEdgeOps(body) {
+      if (!body) return {};
+      if (!body.edgeOps || typeof body.edgeOps !== 'object') {
+        body.edgeOps = {};
+        const legacyMode = body.edgeMode || 'none';
+        const legacyAmt = Number(body.edgeAmount || 0);
+        const legacyTarget = body.faceTarget || 'top';
+        if (legacyMode !== 'none' && legacyAmt > 0) {
+          if (legacyTarget === 'both') {
+            ['top', 'bottom'].forEach(t => { body.edgeOps[t] = { mode: legacyMode, amount: legacyAmt }; });
+          } else {
+            body.edgeOps[legacyTarget] = { mode: legacyMode, amount: legacyAmt };
+          }
+        }
+      }
+      return body.edgeOps;
+    }
+
+    function setEdgeOpForBodyOrGroup(b, target, patch) {
+      const applyOne = (item) => {
+        const ops = ensureBodyEdgeOps(item);
+        const targets = target === 'both' ? ['top', 'bottom', 'front', 'back', 'left', 'right'] : [target];
+        targets.forEach(t => {
+          const prev = ops[t] || { mode: 'none', amount: 0 };
+          ops[t] = { ...prev, ...patch };
+        });
+        item.faceTarget = target;
+        const rep = ops[target === 'both' ? 'top' : target] || { mode: 'none', amount: 0 };
+        item.edgeMode = rep.mode;
+        item.edgeAmount = rep.amount;
+      };
+      applyOne(b);
+      if (b.type === 'group' && Array.isArray(b.children)) {
+        b.children.forEach(ch => applyOne(ch));
+      }
+    }
+
     document.querySelectorAll('.edge-mode-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const b = state.bodies.find(x => x.id === state.selectedBodyId);
         if (!b) return;
         pushHistory();
-        applyPropToBodyOrGroup(b, 'edgeMode', btn.dataset.edgemode);
-        if (b.edgeMode !== 'none' && !b.edgeAmount) applyPropToBodyOrGroup(b, 'edgeAmount', 1.5);
+        const target = b.faceTarget || 'top';
+        const ops = ensureBodyEdgeOps(b);
+        const cur = ops[target === 'both' ? 'top' : target] || { mode: 'none', amount: 0 };
+        const newMode = btn.dataset.edgemode;
+        const newAmt = (newMode !== 'none' && !cur.amount) ? 1.5 : cur.amount;
+        setEdgeOpForBodyOrGroup(b, target, { mode: newMode, amount: newAmt });
         rebuildBodies3D();
         updateBottomContextPanel();
       });
@@ -3668,17 +4161,17 @@
 
     const faceLabelsMap = {
       top: 'Верх (+Z)', bottom: 'Низ (-Z)', front: 'Передняя (-Y)',
-      back: 'Задняя (+Y)', left: 'Левая (-X)', right: 'Правая (+X)', both: 'Все грани'
+      back: 'Задняя (+Y)', left: 'Левая (-X)', right: 'Правая (+X)',
+      holes_top: 'Отверстия (Верх)', holes_bottom: 'Отверстия (Низ)', both: 'Все грани'
     };
 
     document.querySelectorAll('.face-target-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const b = state.bodies.find(x => x.id === state.selectedBodyId);
         if (!b) return;
-        pushHistory();
+        ensureBodyEdgeOps(b);
         applyPropToBodyOrGroup(b, 'faceTarget', btn.dataset.facetarget);
         state.selectedFaceName = faceLabelsMap[b.faceTarget] || 'Грань';
-        rebuildBodies3D();
         updateBottomContextPanel();
       });
     });
@@ -3702,8 +4195,11 @@
       const b = state.bodies.find(x => x.id === state.selectedBodyId);
       if (!b) return;
       const clamped = Math.max(0, Math.min(20, Math.round(val * 10) / 10));
-      applyPropToBodyOrGroup(b, 'edgeAmount', clamped);
-      if (clamped > 0 && (!b.edgeMode || b.edgeMode === 'none')) applyPropToBodyOrGroup(b, 'edgeMode', 'fillet');
+      const target = b.faceTarget || 'top';
+      const ops = ensureBodyEdgeOps(b);
+      const cur = ops[target === 'both' ? 'top' : target] || { mode: 'none', amount: 0 };
+      const nextMode = (clamped > 0 && (!cur.mode || cur.mode === 'none')) ? 'fillet' : cur.mode;
+      setEdgeOpForBodyOrGroup(b, target, { mode: nextMode, amount: clamped });
       document.getElementById('rngEdgeAmount').value = clamped;
       document.getElementById('inpEdgeAmount').value = clamped.toFixed(1);
       rebuildBodies3D();
@@ -3719,13 +4215,17 @@
       const b = state.bodies.find(x => x.id === state.selectedBodyId);
       if (!b) return;
       pushHistory();
-      updateBodyEdgeAmount((b.edgeAmount || 0) - state.edgeStepMm);
+      const target = b.faceTarget || 'top';
+      const cur = (ensureBodyEdgeOps(b)[target === 'both' ? 'top' : target] || {}).amount || 0;
+      updateBodyEdgeAmount(cur - state.edgeStepMm);
     });
     document.getElementById('btnEdgePlus').addEventListener('click', () => {
       const b = state.bodies.find(x => x.id === state.selectedBodyId);
       if (!b) return;
       pushHistory();
-      updateBodyEdgeAmount((b.edgeAmount || 0) + state.edgeStepMm);
+      const target = b.faceTarget || 'top';
+      const cur = (ensureBodyEdgeOps(b)[target === 'both' ? 'top' : target] || {}).amount || 0;
+      updateBodyEdgeAmount(cur + state.edgeStepMm);
     });
 
     document.getElementById('rngDraftAngle').addEventListener('input', e => {
@@ -3964,7 +4464,7 @@
       const spec = ISO_THREADS[specKey] || ISO_THREADS.M6;
       const P = spec.pitch;
       const H = 0.54 * P; // 60-degree ISO thread tooth height
-      const segsPerTurn = 28;
+      const segsPerTurn = 36;
       const zSteps = Math.max(12, Math.round((lengthMm / P) * 8));
       const dz = lengthMm / zSteps;
 
@@ -4275,7 +4775,10 @@
           if (!data || !Array.isArray(data.sketches) || !Array.isArray(data.bodies)) throw new Error('Invalid');
           pushHistory();
           if (data.nextId) nextId = Math.max(nextId, Number(data.nextId) || 1);
-          state.sketches = data.sketches;
+          state.customPlanes = Array.isArray(data.customPlanes) ? data.customPlanes : [];
+        buildReferencePlanes();
+        if (typeof renderCustomPlanesList === 'function') renderCustomPlanesList();
+        state.sketches = data.sketches;
           state.bodies = data.bodies.map(deserializeBodyFromStorage);
           rebuildSketches3D();
           rebuildBodies3D();
@@ -4323,7 +4826,6 @@
       return { blob, fileName, mime: meta.mime };
     }
 
-
     async function exportBlobViaNativeOrBrowser(blob, fileName, shareMode) {
       if (window.AndroidBridge && typeof window.AndroidBridge.saveOrShareSTL === 'function') {
         const buf = await blob.arrayBuffer();
@@ -4354,9 +4856,7 @@
     document.getElementById('btnSharePrint').addEventListener('click', async () => {
       const { blob, fileName, mime } = buildSelectedExportPayload();
       if (!blob) { showToast('Нет данных для отправки'); return; }
-      if (await exportBlobViaNativeOrBrowser(blob, fileName, true)) {
-        return;
-      }
+      if (await exportBlobViaNativeOrBrowser(blob, fileName, true)) return;
       const file = new File([blob], fileName, { type: mime });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try { await navigator.share({ title: fileName, text: '3D модель из PocketCAD', files: [file] }); return; } catch {}
@@ -4413,6 +4913,7 @@
           edgeStepMm: state.edgeStepMm,
           snapEnabled: state.snapEnabled,
           refMagnetEnabled: state.refMagnetEnabled,
+          customPlanes: state.customPlanes || [],
           sketches: state.sketches,
           bodies: state.bodies.map(serializeBodyForStorage)
         };
@@ -4485,6 +4986,109 @@
       controls.update();
       renderer.render(scene, camera);
     };
+    function renderCustomPlanesList() {
+      const box = document.getElementById('customPlanesList');
+      if (!box) return;
+      box.innerHTML = '';
+      const list = state.customPlanes || [];
+      if (list.length === 0) {
+        box.classList.add('hidden');
+        return;
+      }
+      box.classList.remove('hidden');
+      list.forEach(cp => {
+        const wrap = document.createElement('div');
+        wrap.className = 'flex items-center gap-1 bg-amber-500/15 border border-amber-500/35 rounded-xl px-2 py-1 shrink-0';
+        const btnOpen = document.createElement('button');
+        btnOpen.className = 'text-[10px] font-bold text-amber-200 whitespace-nowrap';
+        btnOpen.textContent = cp.name;
+        btnOpen.addEventListener('click', () => {
+          if (cp.suggestedDepth && document.getElementById('rngExtrudeDist')) {
+            const dVal = Math.min(120, Math.max(1, Math.round(cp.suggestedDepth)));
+            document.getElementById('rngExtrudeDist').value = dVal;
+            document.getElementById('rngExtrudeDist').dispatchEvent(new Event('input'));
+          }
+          openSketcherOnPlane(cp.id, 0);
+        });
+        const btnDel = document.createElement('button');
+        btnDel.className = 'text-[10px] text-rose-300 hover:text-rose-200 px-1 font-bold';
+        btnDel.textContent = '✕';
+        btnDel.addEventListener('click', () => {
+          const used = state.sketches.some(s => s.plane === cp.id) || state.bodies.some(b => b.plane === cp.id);
+          if (used) { showToast('На плоскости есть эскизы/тела — сначала удалите их'); return; }
+          pushHistory();
+          state.customPlanes = state.customPlanes.filter(p => p.id !== cp.id);
+          buildReferencePlanes();
+          renderCustomPlanesList();
+        });
+        wrap.appendChild(btnOpen);
+        wrap.appendChild(btnDel);
+        box.appendChild(wrap);
+      });
+    }
+
+    document.getElementById('btnOpenCustomPlaneModal').addEventListener('click', () => {
+      document.getElementById('customPlaneModal').classList.remove('hidden');
+    });
+    document.getElementById('btnCloseCustomPlaneModal').addEventListener('click', () => {
+      document.getElementById('customPlaneModal').classList.add('hidden');
+    });
+    document.getElementById('tabCp2Pts').addEventListener('click', () => {
+      document.getElementById('tabCp2Pts').className = 'py-1.5 rounded-lg text-xs font-semibold bg-amber-600 text-white';
+      document.getElementById('tabCpAngles').className = 'py-1.5 rounded-lg text-xs font-semibold text-slate-400';
+      document.getElementById('cpPanel2Pts').classList.remove('hidden');
+      document.getElementById('cpPanelAngles').classList.add('hidden');
+    });
+    document.getElementById('tabCpAngles').addEventListener('click', () => {
+      document.getElementById('tabCpAngles').className = 'py-1.5 rounded-lg text-xs font-semibold bg-amber-600 text-white';
+      document.getElementById('tabCp2Pts').className = 'py-1.5 rounded-lg text-xs font-semibold text-slate-400';
+      document.getElementById('cpPanelAngles').classList.remove('hidden');
+      document.getElementById('cpPanel2Pts').classList.add('hidden');
+    });
+    document.getElementById('btnStartPick2Pts').addEventListener('click', () => {
+      document.getElementById('customPlaneModal').classList.add('hidden');
+      state.measureMode = false;
+      state.planePickMode = true;
+      state.planePickPts = [];
+      while (highlightGroup.children.length) highlightGroup.remove(highlightGroup.children[0]);
+      showToast('Тапните точку входа A (угол/грань) на 3D-модели');
+    });
+    document.getElementById('btnCreateCpAngles').addEventListener('click', () => {
+      pushHistory();
+      const cp = createCustomPlaneFromPointAngles(
+        document.getElementById('inpCpX').value,
+        document.getElementById('inpCpY').value,
+        document.getElementById('inpCpZ').value,
+        document.getElementById('inpCpRX').value,
+        document.getElementById('inpCpRY').value,
+        document.getElementById('inpCpRZ').value
+      );
+      document.getElementById('customPlaneModal').classList.add('hidden');
+      buildReferencePlanes();
+      renderCustomPlanesList();
+      showToast(`Создана ${cp.name}`);
+      openSketcherOnPlane(cp.id, 0);
+    });
+
+    function setBodyColor(hex) {
+      const b = state.bodies.find(x => x.id === state.selectedBodyId);
+      if (!b) return;
+      state.defaultBodyColor = hex;
+      applyPropToBodyOrGroup(b, 'color', hex);
+      rebuildBodies3D();
+      updateBottomContextPanel();
+    }
+    document.querySelectorAll('.body-color-btn').forEach(btn => {
+      btn.addEventListener('click', () => { pushHistory(); setBodyColor(btn.dataset.bcolor); });
+    });
+    document.getElementById('inpBodyColor').addEventListener('change', e => {
+      pushHistory();
+      setBodyColor(e.target.value);
+    });
+    document.getElementById('inpBodyColor').addEventListener('input', e => {
+      setBodyColor(e.target.value);
+    });
+
   </script>
 </body>
 </html>
