@@ -7,7 +7,6 @@
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/manifold-3d@2.3.1/manifold.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
@@ -2121,14 +2120,16 @@
 
     async function initManifoldEngine() {
       try {
-        const modFactory = (typeof Module === 'function') ? Module : (window.ManifoldModule || null);
-        if (!modFactory) {
-          cadLog('WASM-SKIP', 'Manifold-3D не загружен, используется резервный JS BSP');
+        const isLocalAsset = location.hostname === 'appassets.androidplatform.net' || location.protocol === 'file:';
+        const modUrl = isLocalAsset ? './manifold.js' : 'https://cdn.jsdelivr.net/npm/manifold-3d@2.3.1/manifold.js';
+        const modNs = await import(modUrl);
+        const modFactory = modNs.default || modNs.Module || window.Module;
+        if (typeof modFactory !== 'function') {
+          cadLog('WASM-SKIP', 'Manifold-3D фабрика не найдена, используется резервный JS BSP');
           return;
         }
-        const isLocalAsset = location.hostname === 'appassets.androidplatform.net' || location.protocol === 'file:';
         const wasm = await modFactory({
-          locateFile: (p) => isLocalAsset ? p : `https://cdn.jsdelivr.net/npm/manifold-3d@2.3.1/${p}`
+          locateFile: (p) => isLocalAsset ? `./${p}` : `https://cdn.jsdelivr.net/npm/manifold-3d@2.3.1/${p}`
         });
         if (typeof wasm.setup === 'function') wasm.setup();
         window.ManifoldEngine = { ready: true, failed: false, wasm };
