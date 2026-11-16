@@ -16,8 +16,6 @@ import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -41,6 +39,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
+    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -52,34 +51,15 @@ class MainActivity : AppCompatActivity() {
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.allowFileAccess = true
+        settings.allowContentAccess = true
+        settings.allowFileAccessFromFileURLs = true
+        settings.allowUniversalAccessFromFileURLs = true
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
         settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
 
         webView.addJavascriptInterface(AndroidBridge(), "AndroidBridge")
-        webView.webViewClient = object : WebViewClient() {
-            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                val url = request?.url ?: return null
-                if (url.host == "appassets.androidplatform.net" && url.path?.startsWith("/assets/") == true) {
-                    val assetPath = url.path!!.removePrefix("/assets/")
-                    return try {
-                        val mime = when {
-                            assetPath.endsWith(".html") -> "text/html"
-                            assetPath.endsWith(".js") -> "application/javascript"
-                            assetPath.endsWith(".wasm") -> "application/wasm"
-                            assetPath.endsWith(".css") -> "text/css"
-                            assetPath.endsWith(".png") -> "image/png"
-                            assetPath.endsWith(".jpg") || assetPath.endsWith(".jpeg") -> "image/jpeg"
-                            else -> "application/octet-stream"
-                        }
-                        WebResourceResponse(mime, "UTF-8", assets.open(assetPath))
-                    } catch (_: Exception) {
-                        null
-                    }
-                }
-                return super.shouldInterceptRequest(view, request)
-            }
-        }
+        webView.webViewClient = WebViewClient()
         webView.webChromeClient = object : WebChromeClient() {
             override fun onShowFileChooser(
                 webView: WebView?,
@@ -97,7 +77,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        webView.loadUrl("https://appassets.androidplatform.net/assets/index.html")
+        webView.loadUrl("file:///android_asset/index.html")
     }
 
     inner class AndroidBridge {

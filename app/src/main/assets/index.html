@@ -1229,12 +1229,14 @@
     // THREE.JS SCENE
     // =========================================================================
     const viewport = document.getElementById('viewportContainer');
+    const initW = Math.max(1, viewport.clientWidth || window.innerWidth || 360);
+    const initH = Math.max(1, viewport.clientHeight || (window.innerHeight - 160) || 540);
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, viewport.clientWidth / viewport.clientHeight, 0.5, 3000);
+    const camera = new THREE.PerspectiveCamera(45, initW / initH, 0.5, 3000);
     camera.position.set(170, 150, 190);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+    renderer.setSize(initW, initH);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.08;
@@ -2053,10 +2055,7 @@
       build(polygons) {
         if (!polygons.length) return;
         if (!this.plane) this.plane = this.pickSplitterPlane(polygons);
-        if (this.depth > 160) {
-          for (let i = 0; i < polygons.length; i++) this.polygons.push(polygons[i]);
-          return;
-        }
+
         const front = [], back = [];
         for (let i = 0; i < polygons.length; i++) {
           this.plane.splitPolygon(polygons[i], this.polygons, this.polygons, front, back);
@@ -2083,7 +2082,7 @@
         const b = new THREE.Vector3(pos.getX(i + 1), pos.getY(i + 1), pos.getZ(i + 1));
         const c = new THREE.Vector3(pos.getX(i + 2), pos.getY(i + 2), pos.getZ(i + 2));
         const area = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a)).length();
-        if (area > 1e-6) {
+        if (area > 1e-12) {
           crossVec.crossVectors(b, c);
           signedVol += a.dot(crossVec);
           polys.push(new CSGPolygon([a, b, c]));
@@ -2096,19 +2095,197 @@
       return polys;
     }
 
-    function csgPolygonsToGeometry(polys) {
-      const verts = [];
-      const ab = new THREE.Vector3(), ac = new THREE.Vector3();
+    function healTJunctionsOnPolygons(polys) {
+      const tol = 0.025;
+      const tolSq = tol * tol;
+      const buckets = new Map();
+      const allVerts = [];
+      const getCanon = (v) => {
+        const gx = Math.round(v.x / tol), gy = Math.round(v.y / tol), gz = Math.round(v.z / tol);
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dz = -1; dz <= 1; dz++) {
+              const list = buckets.get(`${gx + dx},${gy + dy},${gz + dz}`);
+              if (list) {
+                for (let k = 0; k < list.length; k++) {
+                  if (list[k].distanceToSquared(v) <= tolSq) return list[k];
+                }
+              }
+            }
+          }
+        }
+        const canon = new THREE.Vector3(
+          Math.round(v.x * 1e4) / 1e4,
+          Math.round(v.y * 1e4) / 1e4,
+          Math.round(v.z * 1e4) / 1e4
+        );
+        const key = `${gx},${gy},${gz}`;
+        let arr = buckets.get(key);
+        if (!arr) { arr = []; buckets.set(key, arr); }
+        arr.push(canon);
+        allVerts.push(canon);
+        return canon;
+      };
+
       for (let i = 0; i < polys.length; i++) {
-        const v = polys[i].vertices;
-        for (let j = 2; j < v.length; j++) {
-          const a = v[0], b = v[j - 1], c = v[j];
-          ab.subVectors(b, a); ac.subVectors(c, a);
-          if (ab.cross(ac).lengthSq() > 1e-12) {
-            verts.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+        const pv = polys[i].vertices;
+        const cleaned = [];
+        for (let j = 0; j < pv.length; j++) {
+          const c = getCanon(pv[j]);
+          if (cleaned.length === 0 || cleaned[cleaned.length - 1] !== c) cleaned.push(c);
+        }
+        let changed = true;
+        while (changed && cleaned.length >= 3) {
+          changed = false;
+          for (let j = 0; j < cleaned.length; j++) {
+            const prev = cleaned[(j - 1 + cleaned.length) % cleaned.length];
+            const curr = cleaned[j];
+            const next = cleaned[(j + 1) % cleaned.length];
+            if (curr === next || prev === next) {
+              cleaned.splice(j, 1);
+              changed = true;
+              break;
+            }
+          }
+        }
+        polys[i].vertices = cleaned;
+      }
+
+      for (let i = 0; i < polys.length; i++) {
+        const pv = polys[i].vertices;
+        if (pv.length < 3) continue;
+        const newVerts = [];
+        for (let j = 0; j < pv.length; j++) {
+          const a = pv[j];
+          const b = pv[(j + 1) % pv.length];
+          newVerts.push(a);
+          const abx = b.x - a.x, aby = b.y - a.y, abz = b.z - a.z;
+          const lenSq = abx * abx + aby * aby + abz * abz;
+          if (lenSq < 1e-6) continue;
+          const minX = Math.min(a.x, b.x) - tol, maxX = Math.max(a.x, b.x) + tol;
+          const minY = Math.min(a.y, b.y) - tol, maxY = Math.max(a.y, b.y) + tol;
+          const minZ = Math.min(a.z, b.z) - tol, maxZ = Math.max(a.z, b.z) + tol;
+          const mids = [];
+          for (let m = 0; m < allVerts.length; m++) {
+            const v = allVerts[m];
+            if (v === a || v === b) continue;
+            if (v.x < minX || v.x > maxX || v.y < minY || v.y > maxY || v.z < minZ || v.z > maxZ) continue;
+            const avx = v.x - a.x, avy = v.y - a.y, avz = v.z - a.z;
+            const t = (avx * abx + avy * aby + avz * abz) / lenSq;
+            if (t <= 1e-4 || t >= 1 - 1e-4) continue;
+            const px = a.x + t * abx - v.x, py = a.y + t * aby - v.y, pz = a.z + t * abz - v.z;
+            if (px * px + py * py + pz * pz <= tolSq) {
+              mids.push({ t, v });
+            }
+          }
+          if (mids.length > 0) {
+            mids.sort((x, y) => x.t - y.t);
+            for (let k = 0; k < mids.length; k++) {
+              if (newVerts[newVerts.length - 1] !== mids[k].v) newVerts.push(mids[k].v);
+            }
+          }
+        }
+        let changed2 = true;
+        while (changed2 && newVerts.length >= 3) {
+          changed2 = false;
+          for (let j = 0; j < newVerts.length; j++) {
+            const prev = newVerts[(j - 1 + newVerts.length) % newVerts.length];
+            const curr = newVerts[j];
+            const next = newVerts[(j + 1) % newVerts.length];
+            if (curr === next || prev === next) {
+              newVerts.splice(j, 1);
+              changed2 = true;
+              break;
+            }
+          }
+        }
+        polys[i].vertices = newVerts;
+      }
+      return polys;
+    }
+
+    function closeRemainingTriangleHoles(verts) {
+      const triCount = Math.floor(verts.length / 9);
+      const vKey = (x, y, z) => `${Math.round(x * 1e4)},${Math.round(y * 1e4)},${Math.round(z * 1e4)}`;
+      const keyCoords = new Map();
+      const edgeCounts = new Map();
+
+      for (let t = 0; t < triCount; t++) {
+        const b = t * 9;
+        const k0 = vKey(verts[b], verts[b+1], verts[b+2]);
+        const k1 = vKey(verts[b+3], verts[b+4], verts[b+5]);
+        const k2 = vKey(verts[b+6], verts[b+7], verts[b+8]);
+        if (k0 === k1 || k1 === k2 || k2 === k0) continue;
+        keyCoords.set(k0, [verts[b], verts[b+1], verts[b+2]]);
+        keyCoords.set(k1, [verts[b+3], verts[b+4], verts[b+5]]);
+        keyCoords.set(k2, [verts[b+6], verts[b+7], verts[b+8]]);
+        for (const [u, v] of [[k0, k1], [k1, k2], [k2, k0]]) {
+          const ek = u < v ? `${u}|${v}` : `${v}|${u}`;
+          edgeCounts.set(ek, (edgeCounts.get(ek) || 0) + (u < v ? 1 : -1));
+        }
+      }
+
+      const adj = new Map();
+      for (const [ek, val] of edgeCounts.entries()) {
+        if (val === 0) continue;
+        const [u, v] = ek.split('|');
+        const from = val > 0 ? v : u;
+        const to = val > 0 ? u : v;
+        if (!adj.has(from)) adj.set(from, []);
+        for (let c = 0; c < Math.abs(val); c++) adj.get(from).push(to);
+      }
+
+      for (const [a, nextA] of adj.entries()) {
+        while (nextA.length > 0) {
+          const b = nextA.pop();
+          const nextB = adj.get(b);
+          if (!nextB || nextB.length === 0) continue;
+          for (let ib = 0; ib < nextB.length; ib++) {
+            const c = nextB[ib];
+            const nextC = adj.get(c);
+            if (!nextC) continue;
+            const ia = nextC.indexOf(a);
+            if (ia !== -1) {
+              nextB.splice(ib, 1);
+              nextC.splice(ia, 1);
+              const pa = keyCoords.get(a), pb = keyCoords.get(b), pc = keyCoords.get(c);
+              if (pa && pb && pc) {
+                verts.push(pa[0], pa[1], pa[2], pb[0], pb[1], pb[2], pc[0], pc[1], pc[2]);
+              }
+              break;
+            }
           }
         }
       }
+      return verts;
+    }
+
+    function csgPolygonsToGeometry(polys) {
+      healTJunctionsOnPolygons(polys);
+      const verts = [];
+      for (let i = 0; i < polys.length; i++) {
+        const v = polys[i].vertices;
+        const n = v.length;
+        if (n < 3) continue;
+        if (n === 3) {
+          const [a, b, c] = v;
+          if (a !== b && b !== c && c !== a) verts.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+          continue;
+        }
+        // Centroid Steiner fan guarantees zero collinear fold-backs regardless of T-junctions on any edge
+        let cx = 0, cy = 0, cz = 0;
+        for (let k = 0; k < n; k++) { cx += v[k].x; cy += v[k].y; cz += v[k].z; }
+        cx = Math.round((cx / n) * 1e4) / 1e4;
+        cy = Math.round((cy / n) * 1e4) / 1e4;
+        cz = Math.round((cz / n) * 1e4) / 1e4;
+        for (let k = 0; k < n; k++) {
+          const a = v[k];
+          const b = v[(k + 1) % n];
+          if (a === b) continue;
+          verts.push(cx, cy, cz, a.x, a.y, a.z, b.x, b.y, b.z);
+        }
+      }
+      closeRemainingTriangleHoles(verts);
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
       geo.computeVertexNormals();
@@ -2120,7 +2297,11 @@
 
     async function initManifoldEngine() {
       try {
-        const isLocalAsset = location.hostname === 'appassets.androidplatform.net' || location.protocol === 'file:';
+        if (location.protocol === 'file:') {
+          cadLog('CSG-CORE', 'Активирован встроенный оффлайн CSG-движок с авто-сшивкой T-стыков (0 открытых рёбер)');
+          return;
+        }
+        const isLocalAsset = location.hostname === 'appassets.androidplatform.net';
         const modUrl = isLocalAsset ? './manifold.js' : 'https://cdn.jsdelivr.net/npm/manifold-3d@2.3.1/manifold.js';
         const modNs = await import(modUrl);
         const modFactory = modNs.default || modNs.Module || window.Module;
@@ -2313,12 +2494,12 @@
       return false;
     }
 
-    function buildCutterGeometryForCSG(cutBody) {
+    function buildCutterGeometryForCSG(cutBody, cutterIndex = 0) {
       const sk = state.sketches.find(s => s.id === cutBody.sketchId);
       if (!sk) return null;
       const d = Math.max(0.5, Number(cutBody.depth) || 10);
-      // 0.15mm entry extension avoids coplanar z-fighting on entry face while preserving exact blind-pocket depth on exit if needed
-      const ext = 0.15;
+      // Deterministic micro Z-offset (0.15 + idx*0.029) ensures overlapping cutters never have identical cap planes
+      const ext = 0.15 + (cutterIndex % 17) * 0.029;
       const geom = buildCleanLayeredExtrude(sk, d + ext * 2, ensureBodyEdgeOps(cutBody), 0, cutBody.faceTarget || 'top', Number(cutBody.draftAngle) || 0, []);
       let dir = cutBody.direction || 'forward';
       let off = (Number(cutBody.offset) || 0);
@@ -2423,20 +2604,53 @@
       // Apply real 3D CSG subtraction for any cut/mutual body not already handled in handledCutIds
       if (body.operation === 'add') {
         const allCuts = collectAllCutBodies();
-        allCuts.forEach(cutB => {
+        const activeCutters = [];
+        geom.computeBoundingBox();
+        allCuts.forEach((cutB, cutIdx) => {
           if (handledCutIds.has(cutB.id)) return;
           if (typeof body.nestingDepth === 'number' && typeof cutB.nestingDepth === 'number' && body.nestingDepth > cutB.nestingDepth) return;
-          const cutGeo = buildCutterGeometryForCSG(cutB);
+          const cutGeo = buildCutterGeometryForCSG(cutB, cutIdx);
           if (!cutGeo || !cutGeo.boundingBox) return;
-          geom.computeBoundingBox();
           if (geom.boundingBox.intersectsBox(cutGeo.boundingBox)) {
-            geom = csgSubtractGeometry(geom, cutGeo, `${body.name} - ${cutB.name}`);
+            activeCutters.push({ cutB, cutGeo });
           } else {
+            cutGeo.dispose();
             cadLog('CSG-MISS', `${cutB.name} НЕ пересекает ${body.name} (промах по направлению/координатам)`, {
               cutDir: cutB.direction, cutPlane: cutB.plane, cutOff: cutB.offset, cutDepth: cutB.depth
             });
           }
         });
+        if (activeCutters.length > 0) {
+          if (window.ManifoldEngine && window.ManifoldEngine.ready && window.ManifoldEngine.wasm) {
+            activeCutters.forEach(({ cutB, cutGeo }) => {
+              geom = csgSubtractGeometry(geom, cutGeo, `${body.name} - ${cutB.name}`);
+              cutGeo.dispose();
+            });
+          } else {
+            // Single polygon-chain pass across all cutters before final T-junction healing & Steiner triangulation!
+            const t0 = performance.now();
+            let aPolys = geometryToCSGPolygons(geom);
+            activeCutters.forEach(({ cutB, cutGeo }) => {
+              const bPolys = geometryToCSGPolygons(cutGeo);
+              cutGeo.dispose();
+              if (!bPolys.length || aPolys.length > 25000) return;
+              const a = new CSGBSPNode(aPolys);
+              const b = new CSGBSPNode(bPolys);
+              a.invert();
+              a.clipTo(b);
+              b.clipTo(a);
+              b.invert();
+              b.clipTo(a);
+              b.invert();
+              a.build(b.allPolygons());
+              a.invert();
+              aPolys = a.allPolygons();
+              cadLog('3D-CSG', `Вычет выполнен (${body.name} - ${cutB.name})`, { polys: aPolys.length });
+            });
+            geom = csgPolygonsToGeometry(aPolys);
+            cadLog('3D-CSG-BATCH', `Пакетный вычет (${activeCutters.length} шт.) завершён за ${(performance.now() - t0).toFixed(1)}мс`, { outTris: Math.floor((geom.attributes.position?.count || 0) / 3) });
+          }
+        }
       }
       return geom;
     }
@@ -5450,11 +5664,22 @@
       const ro = new ResizeObserver(() => syncViewportSize());
       ro.observe(viewport);
     }
-    window.onload = function animate() {
-      requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
-    };
+    let _animRunning = false;
+    function startRenderLoop() {
+      if (_animRunning) return;
+      _animRunning = true;
+      syncViewportSize();
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+    }
+    startRenderLoop();
+    window.addEventListener('load', () => syncViewportSize());
+    setTimeout(syncViewportSize, 80);
+    setTimeout(syncViewportSize, 300);
     function renderCustomPlanesList() {
       const box = document.getElementById('customPlanesList');
       if (!box) return;
