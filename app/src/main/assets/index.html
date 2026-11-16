@@ -1349,14 +1349,33 @@
       }
     }
 
-    function shiftBodyAndLinkedSketches(body, dx, dz) {
+    function shiftBodyAndLinkedSketches(body, dx, dz, movedSkIds = new Set()) {
       if (body.type === 'group' && Array.isArray(body.children)) {
-        body.children.forEach(child => shiftBodyAndLinkedSketches(child, dx, dz));
+        body.children.forEach(child => shiftBodyAndLinkedSketches(child, dx, dz, movedSkIds));
         return;
       }
       if (body.type === 'extrude' && body.sketchId) {
         const sk = state.sketches.find(s => s.id === body.sketchId);
-        if (sk) shiftSketchBySceneDelta(sk, dx, dz);
+        if (sk && !movedSkIds.has(sk.id)) {
+          // If moving an 'add' solid, also shift any coplanar 'cut' sketches whose center is inside this solid BEFORE shifting
+          if (body.operation === 'add') {
+            const outerPts = generate2DPointsForSketch(sk, 0);
+            if (outerPts.length >= 3) {
+              collectCutBodiesForPlane(body.plane).forEach(cutB => {
+                const cSk = state.sketches.find(s => s.id === cutB.sketchId);
+                if (cSk && !movedSkIds.has(cSk.id)) {
+                  const cPts = generate2DPointsForSketch(cSk, 0);
+                  if (cPts.length >= 3 && pointInPolygon2D(cPts[0].u, cPts[0].v, outerPts)) {
+                    movedSkIds.add(cSk.id);
+                    shiftSketchBySceneDelta(cSk, dx, dz);
+                  }
+                }
+              });
+            }
+          }
+          movedSkIds.add(sk.id);
+          shiftSketchBySceneDelta(sk, dx, dz);
+        }
       } else {
         body.shiftX = (body.shiftX || 0) + dx;
         body.shiftZ = (body.shiftZ || 0) + dz;
@@ -1801,11 +1820,14 @@
       clone() { return new CSGPlane(this.normal.clone(), this.w); }
       flip() { this.normal.negate(); this.w = -this.w; }
       static fromPoints(a, b, c) {
-        const n = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a)).normalize();
+        const n = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a));
+        const len = n.length();
+        if (len > 1e-12) n.divideScalar(len);
+        else n.set(0, 1, 0);
         return new CSGPlane(n, n.dot(a));
       }
       splitPolygon(polygon, coplanarFront, coplanarBack, front, back) {
-        const EPS = 1e-4;
+        const EPS = 1e-5;
         let polygonType = 0;
         const types = [];
         for (let i = 0; i < polygon.vertices.length; i++) {
@@ -1822,41 +1844,70 @@
           back.push(polygon);
         } else {
           const f = [], b = [];
+          const pushUnique = (arr, v) => {
+            if (arr.length === 0 || arr[arr.length - 1].distanceToSquared(v) > 1e-10) arr.push(v);
+          };
           for (let i = 0; i < polygon.vertices.length; i++) {
             const j = (i + 1) % polygon.vertices.length;
             const ti = types[i], tj = types[j];
             const vi = polygon.vertices[i], vj = polygon.vertices[j];
-            if (ti !== 2) f.push(vi);
-            if (ti !== 1) b.push(ti !== 2 ? vi.clone() : vi);
+            if (ti !== 2) pushUnique(f, vi);
+            if (ti !== 1) pushUnique(b, ti !== 2 ? vi.clone() : vi);
             if ((ti | tj) === 3) {
-              const t = (this.w - this.normal.dot(vi)) / this.normal.dot(new THREE.Vector3().subVectors(vj, vi));
+              const denom = this.normal.dot(new THREE.Vector3().subVectors(vj, vi));
+              const rawT = Math.abs(denom) > 1e-12 ? (this.w - this.normal.dot(vi)) / denom : 0.5;
+              const t = Math.max(0, Math.min(1, rawT));
               const v = new THREE.Vector3().lerpVectors(vi, vj, t);
-              f.push(v);
-              b.push(v.clone());
+              pushUnique(f, v);
+              pushUnique(b, v.clone());
             }
           }
+          if (f.length >= 3 && f[0].distanceToSquared(f[f.length - 1]) <= 1e-10) f.pop();
+          if (b.length >= 3 && b[0].distanceToSquared(b[b.length - 1]) <= 1e-10) b.pop();
           if (f.length >= 3) front.push(new CSGPolygon(f));
           if (b.length >= 3) back.push(new CSGPolygon(b));
         }
       }
     }
 
+    function simplifyCollinearCSGVertices(verts) {
+      if (verts.length <= 3) return verts;
+      const out = [];
+      const n = verts.length;
+      const d1 = new THREE.Vector3(), d2 = new THREE.Vector3();
+      for (let i = 0; i < n; i++) {
+        const prev = verts[(i - 1 + n) % n];
+        const curr = verts[i];
+        const next = verts[(i + 1) % n];
+        d1.subVectors(curr, prev);
+        d2.subVectors(next, curr);
+        const l1 = d1.length(), l2 = d2.length();
+        if (l1 < 1e-5 || l2 < 1e-5) continue;
+        d1.divideScalar(l1); d2.divideScalar(l2);
+        // Drop strictly collinear intermediate vertices caused by cascading BSP splits
+        if (d1.dot(d2) > 0.99995) continue;
+        out.push(curr);
+      }
+      return out.length >= 3 ? out : verts;
+    }
+
     class CSGPolygon {
       constructor(vertices) {
-        this.vertices = vertices;
-        this.plane = CSGPlane.fromPoints(vertices[0], vertices[1], vertices[2]);
+        this.vertices = simplifyCollinearCSGVertices(vertices);
+        this.plane = CSGPlane.fromPoints(this.vertices[0], this.vertices[1], this.vertices[2]);
       }
       clone() { return new CSGPolygon(this.vertices.map(v => v.clone())); }
       flip() { this.vertices.reverse(); this.plane.flip(); }
     }
 
     class CSGBSPNode {
-      constructor(polygons) {
+      constructor(polygons, depth = 0) {
         this.plane = null; this.front = null; this.back = null; this.polygons = [];
+        this.depth = depth;
         if (polygons && polygons.length) this.build(polygons);
       }
       clone() {
-        const node = new CSGBSPNode();
+        const node = new CSGBSPNode(null, this.depth);
         node.plane = this.plane && this.plane.clone();
         node.front = this.front && this.front.clone();
         node.back = this.back && this.back.clone();
@@ -1891,19 +1942,50 @@
         if (this.back) polys = polys.concat(this.back.allPolygons());
         return polys;
       }
+      pickSplitterPlane(polygons) {
+        // Golden-ratio stride avoids worst-case O(N) chain on radial cylinder/fillet loops
+        if (polygons.length <= 4) return polygons[0].plane.clone();
+        const candidates = Math.min(7, polygons.length);
+        const sampleStep = Math.max(1, Math.floor(polygons.length / 24));
+        let bestPlane = polygons[0].plane;
+        let bestScore = Infinity;
+        for (let c = 0; c < candidates; c++) {
+          const idx = (c * 19 + Math.floor(polygons.length / 2)) % polygons.length;
+          const pl = polygons[idx].plane;
+          let fCnt = 0, bCnt = 0, sCnt = 0;
+          for (let i = 0; i < polygons.length; i += sampleStep) {
+            const p = polygons[i];
+            let pType = 0;
+            for (let k = 0; k < p.vertices.length; k++) {
+              const t = pl.normal.dot(p.vertices[k]) - pl.w;
+              pType |= (t < -1e-5 ? 2 : (t > 1e-5 ? 1 : 0));
+            }
+            if (pType === 1) fCnt++;
+            else if (pType === 2) bCnt++;
+            else if (pType === 3) sCnt++;
+          }
+          const score = Math.abs(fCnt - bCnt) + sCnt * 3;
+          if (score < bestScore) { bestScore = score; bestPlane = pl; }
+        }
+        return bestPlane.clone();
+      }
       build(polygons) {
         if (!polygons.length) return;
-        if (!this.plane) this.plane = polygons[0].plane.clone();
+        if (this.depth > 52) {
+          for (let i = 0; i < polygons.length; i++) this.polygons.push(polygons[i]);
+          return;
+        }
+        if (!this.plane) this.plane = this.pickSplitterPlane(polygons);
         const front = [], back = [];
         for (let i = 0; i < polygons.length; i++) {
           this.plane.splitPolygon(polygons[i], this.polygons, this.polygons, front, back);
         }
         if (front.length) {
-          if (!this.front) this.front = new CSGBSPNode();
+          if (!this.front) this.front = new CSGBSPNode(null, this.depth + 1);
           this.front.build(front);
         }
         if (back.length) {
-          if (!this.back) this.back = new CSGBSPNode();
+          if (!this.back) this.back = new CSGBSPNode(null, this.depth + 1);
           this.back.build(back);
         }
       }
@@ -1941,7 +2023,7 @@
         for (let j = 2; j < v.length; j++) {
           const a = v[0], b = v[j - 1], c = v[j];
           ab.subVectors(b, a); ac.subVectors(c, a);
-          if (ab.cross(ac).lengthSq() > 1e-7) {
+          if (ab.cross(ac).lengthSq() > 1e-12) {
             verts.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
           }
         }
@@ -1990,13 +2072,38 @@
       return solids;
     }
 
+    function segmentsIntersect2D(a, b, c, d) {
+      const ccw = (p1, p2, p3) => (p3.v - p1.v) * (p2.u - p1.u) > (p2.v - p1.v) * (p3.u - p1.u);
+      return (ccw(a, c, d) !== ccw(b, c, d)) && (ccw(a, b, c) !== ccw(a, b, d));
+    }
+
+    function polygonsOverlapOrTouch2D(polyA, polyB, minGap = 0.25) {
+      const minGapSq = minGap * minGap;
+      for (let i = 0; i < polyA.length; i++) {
+        if (pointInPolygon2D(polyA[i].u, polyA[i].v, polyB)) return true;
+      }
+      for (let j = 0; j < polyB.length; j++) {
+        if (pointInPolygon2D(polyB[j].u, polyB[j].v, polyA)) return true;
+      }
+      for (let i = 0; i < polyA.length; i++) {
+        const a1 = polyA[i], a2 = polyA[(i + 1) % polyA.length];
+        for (let j = 0; j < polyB.length; j++) {
+          const b1 = polyB[j], b2 = polyB[(j + 1) % polyB.length];
+          if (segmentsIntersect2D(a1, a2, b1, b2)) return true;
+          const dx = a1.u - b1.u, dv = a1.v - b1.v;
+          if (dx * dx + dv * dv < minGapSq) return true;
+        }
+      }
+      return false;
+    }
+
     function buildCutterGeometryForCSG(cutBody) {
       const sk = state.sketches.find(s => s.id === cutBody.sketchId);
       if (!sk) return null;
       const d = Math.max(0.5, Number(cutBody.depth) || 10);
-      // Slight 0.08mm extension on both ends ensures clean through-cuts without coplanar z-fighting
-      const ext = 0.08;
-      const geom = buildCleanLayeredExtrude(sk, d + ext * 2, 'none', 0, 'top', 0, []);
+      // 0.15mm entry extension avoids coplanar z-fighting on entry face while preserving exact blind-pocket depth on exit if needed
+      const ext = 0.15;
+      const geom = buildCleanLayeredExtrude(sk, d + ext * 2, ensureBodyEdgeOps(cutBody), 0, cutBody.faceTarget || 'top', Number(cutBody.draftAngle) || 0, []);
       let dir = cutBody.direction || 'forward';
       let off = (Number(cutBody.offset) || 0);
       if (dir === 'forward') off -= ext;
@@ -2021,20 +2128,18 @@
       if (!sketch) return new THREE.BoxGeometry(10, 10, 10);
 
       const depth = Math.max(0.5, Number(body.depth) || 10);
-      const edgeMode = body.edgeMode || 'none';
-      const faceTarget = body.faceTarget || 'top';
-      const minSketchDim = sketch.params ? Math.min(sketch.params.w || 20, sketch.params.h || 20) : 20;
-      const maxEdge = edgeMode === 'outer_fillet' ? depth * 0.85 : Math.min(depth * 0.4, minSketchDim * 0.4);
-      const edgeAmt = edgeMode !== 'none' ? Math.min(Math.max(0, Number(body.edgeAmount) || 0), maxEdge) : 0;
-
       const cutHoles = [];
+      const handledCutIds = new Set();
+
       if (body.operation === 'add') {
-        const bodyPts = generate2DPointsForSketch(sketch, 0);
-        let bMinU = Infinity, bMaxU = -Infinity, bMinV = Infinity, bMaxV = -Infinity;
-        bodyPts.forEach(p => {
-          if (p.u < bMinU) bMinU = p.u; if (p.u > bMaxU) bMaxU = p.u;
-          if (p.v < bMinV) bMinV = p.v; if (p.v > bMaxV) bMaxV = p.v;
-        });
+        const ops = ensureBodyEdgeOps(body);
+        const topIns = (ops.top && ops.top.mode !== 'none' && ops.top.mode !== 'outer_fillet') ? (Number(ops.top.amount) || 0) : 0;
+        const botIns = (ops.bottom && ops.bottom.mode !== 'none' && ops.bottom.mode !== 'outer_fillet') ? (Number(ops.bottom.amount) || 0) : 0;
+        const hTopOut = (ops.holes_top && ops.holes_top.mode !== 'none') ? (Number(ops.holes_top.amount) || 0) : 0;
+        const hBotOut = (ops.holes_bottom && ops.holes_bottom.mode !== 'none') ? (Number(ops.holes_bottom.amount) || 0) : 0;
+        const draftLoss = Math.abs(body.draftAngle || 0) > 0.01 ? depth * Math.tan((Math.abs(body.draftAngle) * Math.PI) / 180) : 0;
+        const safeMargin = Math.max(topIns, botIns) + Math.max(hTopOut, hBotOut) + draftLoss + 0.4;
+        const safeOuterPts = generate2DPointsForSketch(sketch, safeMargin);
 
         const getZRange = (bObj) => {
           const d = Math.max(0.5, Number(bObj.depth) || 10);
@@ -2044,19 +2149,30 @@
           return [off, off + d];
         };
         const [bZ0, bZ1] = getZRange(body);
+        const sameShift = (cutB) =>
+          Math.abs((cutB.shiftX || 0) - (body.shiftX || 0)) < 1e-3 &&
+          Math.abs((cutB.shiftY || 0) - (body.shiftY || 0)) < 1e-3 &&
+          Math.abs((cutB.shiftZ || 0) - (body.shiftZ || 0)) < 1e-3;
 
         collectCutBodiesForPlane(body.plane).forEach(cutB => {
+          if (typeof body.nestingDepth === 'number' && typeof cutB.nestingDepth === 'number' && body.nestingDepth > cutB.nestingDepth) return;
           const [cZ0, cZ1] = getZRange(cutB);
-          // Only apply cut hole if Z-ranges overlap
-          if (cZ1 <= bZ0 + 0.05 || cZ0 >= bZ1 - 0.05) return;
+          // 2D cutHoles MUST only be used for TRUE through-holes spanning the entire solid Z range!
+          // Blind pockets/slots go to 3D CSG so their bottom floor is preserved.
+          const isThroughCut = (cZ0 <= bZ0 + 0.05) && (cZ1 >= bZ1 - 0.05);
+          if (!isThroughCut || !sameShift(cutB)) return;
 
           const cutSk = state.sketches.find(s => s.id === cutB.sketchId);
           if (cutSk) {
             const hp = generate2DPointsForSketch(cutSk, 0);
             if (hp.length >= 3) {
-              // Verify all hole vertices lie strictly inside the body's 2D bounding box (prevents ShapeGeometry outside-hole artifacts!)
-              const allInside = hp.every(p => p.u > bMinU + 0.2 && p.u < bMaxU - 0.2 && p.v > bMinV + 0.2 && p.v < bMaxV - 0.2);
-              if (allInside) cutHoles.push(hp);
+              const allInside = safeOuterPts.length >= 3 && hp.every(p => pointInPolygon2D(p.u, p.v, safeOuterPts));
+              // Also ensure this hole does not overlap or touch any already accepted 2D hole (prevents ShapeGeometry self-intersection!)
+              const overlapsExistingHole = cutHoles.some(existingHp => polygonsOverlapOrTouch2D(hp, existingHp, Math.max(hTopOut, hBotOut) * 2 + 0.25));
+              if (allInside && !overlapsExistingHole) {
+                cutHoles.push(hp);
+                handledCutIds.add(cutB.id);
+              }
             }
           }
         });
@@ -2069,13 +2185,13 @@
       }
       geom.computeBoundingBox();
 
-      // If operation === 'mutual', subtract every existing 'add' solid from THIS body (removes self-intersection from both!)
+      // If operation === 'mutual', subtract every existing 'add' solid from THIS body
       if (body.operation === 'mutual') {
         collectAllSolidBodies().forEach(solidB => {
           if (solidB.id === body.id) return;
           const sSk = state.sketches.find(x => x.id === solidB.sketchId);
           if (!sSk) return;
-          const sGeo = buildCleanLayeredExtrude(sSk, Math.max(0.5, Number(solidB.depth) || 10), 'none', 0, 'top', 0, []);
+          const sGeo = buildCleanLayeredExtrude(sSk, Math.max(0.5, Number(solidB.depth) || 10), ensureBodyEdgeOps(solidB), 0, solidB.faceTarget || 'top', Number(solidB.draftAngle) || 0, []);
           orientExtrudedGeometryToPlane(sGeo, solidB.plane, solidB.offset, Math.max(0.5, Number(solidB.depth) || 10), solidB.direction || 'forward');
           if (solidB.shiftX || solidB.shiftY || solidB.shiftZ) sGeo.translate(solidB.shiftX || 0, solidB.shiftY || 0, solidB.shiftZ || 0);
           sGeo.computeBoundingBox();
@@ -2085,25 +2201,16 @@
         });
       }
 
-      // Apply real 3D CSG subtraction for any cut/mutual body that was not already applied via 2D cutHoles
+      // Apply real 3D CSG subtraction for any cut/mutual body not already handled in handledCutIds
       if (body.operation === 'add') {
         const allCuts = collectAllCutBodies();
         allCuts.forEach(cutB => {
-          // Skip if already handled by exact co-planar 2D hole
-          const cutSk = state.sketches.find(x => x.id === cutB.sketchId);
-          if (!cutSk) return;
+          if (handledCutIds.has(cutB.id)) return;
+          if (typeof body.nestingDepth === 'number' && typeof cutB.nestingDepth === 'number' && body.nestingDepth > cutB.nestingDepth) return;
           const cutGeo = buildCutterGeometryForCSG(cutB);
           if (!cutGeo || !cutGeo.boundingBox) return;
           if (geom.boundingBox.intersectsBox(cutGeo.boundingBox)) {
-            // Check if already in cutHoles (same plane & inside)
-            const alreadyIn2DHoles = cutB.plane === body.plane && cutHoles.some(hp => {
-              const p0 = hp[0];
-              const cPts = generate2DPointsForSketch(cutSk, 0);
-              return cPts.length === hp.length && Math.abs(cPts[0].u - p0.u) < 0.01 && Math.abs(cPts[0].v - p0.v) < 0.01;
-            });
-            if (!alreadyIn2DHoles) {
-              geom = csgSubtractGeometry(geom, cutGeo);
-            }
+            geom = csgSubtractGeometry(geom, cutGeo);
           }
         });
       }
@@ -2382,10 +2489,27 @@
       return { totalOpen, isManifold: solidCount > 0 && totalOpen === 0, solidCount };
     }
 
+    let _rebuildRAF = null;
+    function scheduleRebuildBodies3D(updatePanel = false) {
+      if (_rebuildRAF) return;
+      _rebuildRAF = requestAnimationFrame(() => {
+        _rebuildRAF = null;
+        rebuildBodies3D();
+        if (updatePanel) updateBottomContextPanel();
+      });
+    }
+
     function rebuildBodies3D() {
       while (bodies3DGroup.children.length) {
         const ch = bodies3DGroup.children[0];
         if (ch.geometry) ch.geometry.dispose();
+        if (ch.material) ch.material.dispose();
+        if (ch.children && ch.children.length) {
+          ch.children.forEach(sub => {
+            if (sub.geometry) sub.geometry.dispose();
+            if (sub.material) sub.material.dispose();
+          });
+        }
         bodies3DGroup.remove(ch);
       }
       state.bodies.forEach(body => {
@@ -3942,6 +4066,25 @@
       if (sk) openSketcherOnPlane(sk.plane, sk.offset, sk.id);
     });
 
+    function computePolygonArea2D(pts) {
+      if (!pts || pts.length < 3) return 0;
+      let a = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const j = (i + 1) % pts.length;
+        a += pts[i].u * pts[j].v - pts[j].u * pts[i].v;
+      }
+      return Math.abs(a) * 0.5;
+    }
+
+    function isPolygonInsidePolygon(innerPts, outerPts) {
+      if (!innerPts || !outerPts || innerPts.length < 3 || outerPts.length < 3) return false;
+      const step = Math.max(1, Math.floor(innerPts.length / 12));
+      for (let i = 0; i < innerPts.length; i += step) {
+        if (!pointInPolygon2D(innerPts[i].u, innerPts[i].v, outerPts)) return false;
+      }
+      return true;
+    }
+
     document.getElementById('btnApplyExtrude').addEventListener('click', () => {
       const sk = state.sketches.find(s => s.id === state.selectedSketchId);
       if (!sk) return;
@@ -3949,22 +4092,58 @@
       const depth = Math.max(0.5, parseFloat(rngExt.value) || 15);
       const op = state.pendingExtrudeOp;
       const dir = state.pendingExtrudeDir || 'forward';
-      const sessionSketches = sk.sessionId
-        ? state.sketches.filter(s => s.sessionId === sk.sessionId && !state.bodies.some(b => b.sketchId === s.id))
+      const unextruded = state.sketches.filter(s => !state.bodies.some(b => b.sketchId === s.id));
+      let targets = sk.sessionId
+        ? unextruded.filter(s => s.sessionId === sk.sessionId)
         : [sk];
-      const targets = sessionSketches.length > 0 ? sessionSketches : [sk];
+      if (targets.length <= 1) {
+        const samePlane = unextruded.filter(s => s.plane === sk.plane && Math.abs((s.offset || 0) - (sk.offset || 0)) < 0.1);
+        if (samePlane.length > 1) targets = samePlane;
+      }
+      if (targets.length === 0) targets = [sk];
 
-      const createdBodies = targets.map((targetSk, idx) => ({
-        id: genId('body'),
-        name: `${op === 'cut' ? 'Вырез' : 'Тело'} #${state.bodies.length + idx + 1}`,
-        type: 'extrude', operation: op, sketchId: targetSk.id,
-        plane: targetSk.plane, offset: targetSk.offset, depth,
-        direction: dir,
-        edgeMode: 'none', edgeAmount: 0, faceTarget: 'top', draftAngle: 0,
-        shiftX: 0, shiftY: 0, shiftZ: 0
-      }));
+      // Even-Odd nested contour detection (islands / inner cutouts) when extruding as solid ('add')
+      const polys = targets.map(s => {
+        const pts = generate2DPointsForSketch(s, 0);
+        return { sk: s, pts, area: computePolygonArea2D(pts) };
+      });
+      const nestingDepths = polys.map((item, i) => {
+        let d = 0;
+        for (let j = 0; j < polys.length; j++) {
+          if (i === j) continue;
+          if (polys[j].area > item.area + 0.1 && isPolygonInsidePolygon(item.pts, polys[j].pts)) d++;
+        }
+        return d;
+      });
 
-      if (createdBodies.length > 1 && op === 'add') {
+      const hasNestedCuts = op === 'add' && nestingDepths.some(d => d % 2 === 1);
+      const createdBodies = targets.map((targetSk, idx) => {
+        const nDepth = nestingDepths[idx];
+        const effOp = (op === 'add' && nDepth % 2 === 1) ? 'cut' : op;
+        return {
+          id: genId('body'),
+          name: effOp === 'cut'
+            ? (op === 'add' ? `Вырез (внутр.) #${state.bodies.length + idx + 1}` : `Вырез #${state.bodies.length + idx + 1}`)
+            : `Тело #${state.bodies.length + idx + 1}`,
+          type: 'extrude', operation: effOp, sketchId: targetSk.id,
+          plane: targetSk.plane, offset: targetSk.offset, depth,
+          direction: dir,
+          nestingDepth: nDepth,
+          edgeMode: 'none', edgeAmount: 0, faceTarget: 'top', draftAngle: 0,
+          shiftX: 0, shiftY: 0, shiftZ: 0
+        };
+      });
+
+      const addBodies = createdBodies.filter(b => b.operation === 'add');
+      const cutBodies = createdBodies.filter(b => b.operation !== 'add');
+
+      if (hasNestedCuts) {
+        // Put outer solids first and inner cut contours right after so cutHoles cuts cleanly
+        state.bodies.push(...addBodies, ...cutBodies);
+        const primary = addBodies[0] || createdBodies[0];
+        selectBody(primary.id, 'Верх (+Z)', 'top');
+        showToast(`Создано 3D с вырезом (${addBodies.length} тел, ${cutBodies.length} отв.)`);
+      } else if (createdBodies.length > 1 && op === 'add') {
         const grp = {
           id: genId('grp'),
           name: `Набор (${createdBodies.length} эл.)`,
@@ -3975,11 +4154,12 @@
         };
         state.bodies.push(grp);
         selectBody(grp.id, 'Верх (+Z)', 'top');
+        showToast(`Создано 3D (${targets.length} эл.)`);
       } else {
         state.bodies.push(...createdBodies);
         selectBody(createdBodies[0].id, 'Верх (+Z)', 'top');
+        showToast(op === 'cut' ? `Вырез применён (${targets.length} эл.)` : `Создано 3D (${targets.length} эл.)`);
       }
-      showToast(op === 'cut' ? `Вырез применён (${targets.length} эл.)` : `Создано 3D (${targets.length} эл.)`);
     });
 
 
@@ -4202,8 +4382,7 @@
       setEdgeOpForBodyOrGroup(b, target, { mode: nextMode, amount: clamped });
       document.getElementById('rngEdgeAmount').value = clamped;
       document.getElementById('inpEdgeAmount').value = clamped.toFixed(1);
-      rebuildBodies3D();
-      updateBottomContextPanel();
+      scheduleRebuildBodies3D(true);
     }
 
     document.getElementById('rngEdgeAmount').addEventListener('input', e => updateBodyEdgeAmount(parseFloat(e.target.value) || 0));
@@ -4233,7 +4412,7 @@
       if (!b) return;
       b.draftAngle = parseFloat(e.target.value) || 0;
       document.getElementById('valDraftAngle').textContent = `${b.draftAngle}°`;
-      rebuildBodies3D();
+      scheduleRebuildBodies3D(false);
     });
 
     document.getElementById('rngBodyDepth').addEventListener('input', e => {
@@ -4247,7 +4426,7 @@
         centerAndDropGeometryToBed(b.rawGeometry);
       }
       document.getElementById('valBodyDepth').textContent = `${b.depth}мм`;
-      rebuildBodies3D();
+      scheduleRebuildBodies3D(false);
     });
 
     document.querySelectorAll('.move-nudge-btn').forEach(btn => {
