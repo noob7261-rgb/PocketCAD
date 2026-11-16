@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/manifold-3d@2.3.1/manifold.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
@@ -1974,7 +1975,7 @@
 
     class CSGPolygon {
       constructor(vertices) {
-        this.vertices = simplifyCollinearCSGVertices(vertices);
+        this.vertices = vertices;
         this.plane = CSGPlane.fromPoints(this.vertices[0], this.vertices[1], this.vertices[2]);
       }
       clone() { return new CSGPolygon(this.vertices.map(v => v.clone())); }
@@ -2052,11 +2053,11 @@
       }
       build(polygons) {
         if (!polygons.length) return;
-        if (this.depth > 52) {
+        if (!this.plane) this.plane = this.pickSplitterPlane(polygons);
+        if (this.depth > 160) {
           for (let i = 0; i < polygons.length; i++) this.polygons.push(polygons[i]);
           return;
         }
-        if (!this.plane) this.plane = this.pickSplitterPlane(polygons);
         const front = [], back = [];
         for (let i = 0; i < polygons.length; i++) {
           this.plane.splitPolygon(polygons[i], this.polygons, this.polygons, front, back);
@@ -2116,16 +2117,138 @@
       return geo;
     }
 
+    window.ManifoldEngine = { ready: false, failed: false, wasm: null };
+
+    async function initManifoldEngine() {
+      try {
+        const modFactory = (typeof Module === 'function') ? Module : (window.ManifoldModule || null);
+        if (!modFactory) {
+          cadLog('WASM-SKIP', 'Manifold-3D не загружен, используется резервный JS BSP');
+          return;
+        }
+        const isLocalAsset = location.hostname === 'appassets.androidplatform.net' || location.protocol === 'file:';
+        const wasm = await modFactory({
+          locateFile: (p) => isLocalAsset ? p : `https://cdn.jsdelivr.net/npm/manifold-3d@2.3.1/${p}`
+        });
+        if (typeof wasm.setup === 'function') wasm.setup();
+        window.ManifoldEngine = { ready: true, failed: false, wasm };
+        cadLog('WASM-OK', 'Manifold-3D WASM ядро активно');
+        if (state.bodies.length > 0) rebuildBodies3D();
+      } catch (err) {
+        window.ManifoldEngine.failed = true;
+        cadLog('WASM-ERR', 'Ошибка запуска Manifold-3D, откат на JS BSP', String(err));
+      }
+    }
+
+    function threeGeoToManifold(geom) {
+      const wasm = window.ManifoldEngine.wasm;
+      const g = geom.index ? geom.toNonIndexed() : geom;
+      const pos = g.attributes.position;
+      const triCount = Math.floor(pos.count / 3);
+      const vMap = new Map();
+      const verts = [];
+      const tris = [];
+      let signedVol = 0;
+      const va = new THREE.Vector3(), vb = new THREE.Vector3(), vc = new THREE.Vector3(), cr = new THREE.Vector3();
+
+      const getIdx = (x, y, z) => {
+        const key = `${Math.round(x * 1e4)},${Math.round(y * 1e4)},${Math.round(z * 1e4)}`;
+        let id = vMap.get(key);
+        if (id === undefined) {
+          id = verts.length / 3;
+          verts.push(x, y, z);
+          vMap.set(key, id);
+        }
+        return id;
+      };
+
+      for (let t = 0; t < triCount; t++) {
+        const i0 = t * 3, i1 = t * 3 + 1, i2 = t * 3 + 2;
+        va.set(pos.getX(i0), pos.getY(i0), pos.getZ(i0));
+        vb.set(pos.getX(i1), pos.getY(i1), pos.getZ(i1));
+        vc.set(pos.getX(i2), pos.getY(i2), pos.getZ(i2));
+        cr.crossVectors(vb, vc);
+        signedVol += va.dot(cr);
+        const a = getIdx(va.x, va.y, va.z);
+        const b = getIdx(vb.x, vb.y, vb.z);
+        const c = getIdx(vc.x, vc.y, vc.z);
+        if (a !== b && b !== c && c !== a) tris.push(a, b, c);
+      }
+
+      if (signedVol < 0) {
+        for (let i = 0; i < tris.length; i += 3) {
+          const tmp = tris[i + 1]; tris[i + 1] = tris[i + 2]; tris[i + 2] = tmp;
+        }
+      }
+
+      const mesh = new wasm.Mesh({
+        numProp: 3,
+        vertProperties: new Float32Array(verts),
+        triVerts: new Uint32Array(tris)
+      });
+      if (typeof mesh.merge === 'function') mesh.merge();
+      return new wasm.Manifold(mesh);
+    }
+
+    function manifoldToThreeGeo(mf) {
+      const outMesh = mf.getMesh();
+      const numProp = outMesh.numProp || 3;
+      const vp = outMesh.vertProperties;
+      const tv = outMesh.triVerts;
+      const positions = new Float32Array(tv.length * 3);
+      for (let i = 0; i < tv.length; i++) {
+        const vi = tv[i] * numProp;
+        positions[i * 3] = vp[vi];
+        positions[i * 3 + 1] = vp[vi + 1];
+        positions[i * 3 + 2] = vp[vi + 2];
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geo.computeVertexNormals();
+      geo.computeBoundingBox();
+      return geo;
+    }
+
     function csgSubtractGeometry(solidGeo, cutterGeo, debugLabel = '') {
       const t0 = performance.now();
+
+      // 1. Primary Engine: Manifold-3D WASM (guaranteed 0 open edges, ignores empty space cleanly)
+      if (window.ManifoldEngine && window.ManifoldEngine.ready && window.ManifoldEngine.wasm) {
+        let mfA = null, mfB = null, mfRes = null;
+        try {
+          mfA = threeGeoToManifold(solidGeo);
+          mfB = threeGeoToManifold(cutterGeo);
+          mfRes = mfA.subtract(mfB);
+          const resTris = typeof mfRes.numTri === 'function' ? mfRes.numTri() : 0;
+          if (resTris === 0) {
+            cadLog('ERROR', `Вырез полностью удалил тело (${debugLabel})`);
+            showToast(`⚠ Вырез полностью удалил деталь (${debugLabel})`);
+            return solidGeo;
+          }
+          const outGeo = manifoldToThreeGeo(mfRes);
+          const dt = (performance.now() - t0).toFixed(1);
+          cadLog('WASM-CSG', `Вычет выполнен (${debugLabel}) за ${dt}мс`, { outTris: resTris });
+          return outGeo;
+        } catch (err) {
+          cadLog('ERROR', `Сбой WASM CSG (${debugLabel}), откат на JS BSP`, String(err));
+        } finally {
+          try { mfA?.delete?.(); } catch {}
+          try { mfB?.delete?.(); } catch {}
+          try { mfRes?.delete?.(); } catch {}
+        }
+      }
+
+      // 2. Fallback Engine: JS BSP
       const aPolys = geometryToCSGPolygons(solidGeo);
       const bPolys = geometryToCSGPolygons(cutterGeo);
       if (aPolys.length === 0 || bPolys.length === 0) {
-        cadLog('CSG-WARN', `Пустая геометрия в CSG (${debugLabel})`, { a: aPolys.length, b: bPolys.length });
+        cadLog('ERROR', `Пустая геометрия в CSG (${debugLabel})`, { a: aPolys.length, b: bPolys.length });
+        showToast(`⚠ Ошибка геометрии в операции ${debugLabel}`);
         return solidGeo;
       }
       if (aPolys.length > 25000) {
-        cadLog('CSG-LIMIT', `Превышен лимит полигонов > 25000 (${debugLabel})`, { aPolys: aPolys.length });
+        cadLog('ERROR', `Превышен лимит полигонов > 25000 (${debugLabel})`, { aPolys: aPolys.length });
+        showToast(`⚠ Слишком сложная сетка (>25000 полигонов) для ${debugLabel}`);
         return solidGeo;
       }
       const a = new CSGBSPNode(aPolys);
@@ -2648,7 +2771,19 @@
       const addBodies = state.bodies.filter(b => ((b.operation === 'add' || b.operation === 'mutual') || b.operation === 'mutual') && b.computedGeometry);
       const badge = document.getElementById('manifoldBadge');
       if (badge) {
-        const mf = checkAllBodiesManifold();
+        // Check if any cut body completely missed all solids (cutting empty space)
+      const allSolids = collectAllSolidBodies().filter(sb => sb.computedGeometry && sb.computedGeometry.boundingBox);
+      collectAllCutBodies().forEach(cb => {
+        if (cb.operation !== 'cut') return;
+        const cGeo = buildCutterGeometryForCSG(cb);
+        if (!cGeo || !cGeo.boundingBox) return;
+        const hitsAny = allSolids.some(sb => sb.computedGeometry.boundingBox.intersectsBox(cGeo.boundingBox));
+        cGeo.dispose();
+        if (!hitsAny) {
+          cadLog('ERROR', `Вырез "${cb.name}" в пустоте — не пересекает ни одну деталь`);
+        }
+      });
+      const mf = checkAllBodiesManifold();
         if (mf.solidCount === 0) {
           badge.className = 'px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-700/50 text-slate-300 border border-white/10';
           badge.textContent = 'Нет тел';
@@ -4240,7 +4375,11 @@
       const depth = Math.max(0.5, parseFloat(rngExt.value) || 15);
       const op = state.pendingExtrudeOp;
       const dir = state.pendingExtrudeDir || 'forward';
-      const unextruded = state.sketches.filter(s => !state.bodies.some(b => b.sketchId === s.id));
+      const isSketchUsed = (skId) => {
+        const scan = list => list.some(b => b.sketchId === skId || (b.type === 'group' && Array.isArray(b.children) && scan(b.children)));
+        return scan(state.bodies);
+      };
+      const unextruded = state.sketches.filter(s => !isSketchUsed(s.id));
       let targets = sk.sessionId
         ? unextruded.filter(s => s.sessionId === sk.sessionId)
         : [sk];
@@ -5485,6 +5624,7 @@
       showToast(`Лог сохранён: ${fileName}`);
     });
 
+    initManifoldEngine();
   </script>
 </body>
 </html>
