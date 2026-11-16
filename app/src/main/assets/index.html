@@ -75,6 +75,9 @@
       </button>
 
       <div class="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+        <button id="btnOpenDebugLog" class="hidden bg-rose-500/20 hover:bg-rose-500/30 active:scale-95 text-rose-300 border border-rose-500/40 px-2 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 transition" title="Открыть диагностические логи операций">
+          <span>🐞</span><span class="hidden sm:inline">Лог</span>
+        </button>
         <button id="btnUndo" disabled class="bg-white/5 hover:bg-white/10 active:scale-95 disabled:opacity-35 disabled:pointer-events-none text-slate-200 border border-white/10 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition" title="Отменить">
           <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
           <span class="hidden sm:inline">Отмена</span>
@@ -834,6 +837,30 @@
       </div>
     </div>
 
+    <!-- SECRET DIAGNOSTIC LOG MODAL (5 TAPS ON LOGO) -->
+    <div id="debugLogModal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3">
+      <div class="w-full max-w-lg bg-[#0f131c] border border-white/15 rounded-2xl p-3.5 space-y-2.5 shadow-2xl flex flex-col max-h-[82dvh]">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-rose-400">🐞 Диагностика операций и CSG</span>
+            <span id="lblDebugLogCount" class="text-[10px] font-mono text-slate-400 bg-white/5 px-1.5 py-0.5 rounded">0 зап.</span>
+          </div>
+          <button id="btnCloseDebugLog" class="w-7 h-7 rounded-lg bg-white/10 text-slate-300 text-xs font-bold">✕</button>
+        </div>
+        <pre id="debugLogContent" class="flex-1 bg-black/60 border border-white/10 rounded-xl p-2.5 text-[10px] font-mono text-emerald-300 overflow-y-auto custom-scroll whitespace-pre-wrap select-text leading-relaxed min-h-[200px]"></pre>
+        <div class="flex flex-wrap items-center justify-between gap-1.5 pt-1">
+          <div class="flex items-center gap-1.5">
+            <button id="btnCopyDebugLog" class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold">📋 Скопировать</button>
+            <button id="btnDownloadDebugLog" class="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-semibold">💾 .TXT</button>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button id="btnDumpStateLog" class="px-2.5 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold" title="Записать текущие объекты сцены в лог">🔍 Снимок сцены</button>
+            <button id="btnClearDebugLog" class="px-2.5 py-1.5 rounded-xl bg-rose-500/20 text-rose-300 text-xs font-semibold">🧹 Очистить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   <script>
     // =========================================================================
     // STATE & UNDO HISTORY STACK
@@ -847,6 +874,8 @@
       sketchBottomCollapsed: false,
 
       activePlane: 'XY',
+      debugLogEnabled: false,
+      opLogs: [],
       defaultBodyColor: '#3b82f6',
       customPlanes: [],
       planePickMode: false,
@@ -904,6 +933,15 @@
 
     const historyStack = [];
     const MAX_HISTORY = 35;
+
+    function cadLog(tag, msg, detail = null) {
+      const now = new Date();
+      const ts = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
+      const line = `[${ts}] [${tag}] ${msg}` + (detail ? ` | ${typeof detail === 'string' ? detail : JSON.stringify(detail)}` : '');
+      state.opLogs.push(line);
+      if (state.opLogs.length > 250) state.opLogs.shift();
+      if (typeof renderDebugLogView === 'function' && state.debugLogEnabled) renderDebugLogView();
+    }
 
     function cloneBody(b) {
       return {
@@ -1029,8 +1067,51 @@
       }, 20);
     }
 
-    document.getElementById('btnLogoZen').addEventListener('click', () => setZenMode(true));
-    document.getElementById('btnLogoRestore').addEventListener('click', () => setZenMode(false));
+    let _logoTapCount = 0;
+    let _logoTapWindowTimer = null;
+    let _logoZenSingleTimer = null;
+
+    function handleSecretLogoTap() {
+      _logoTapCount++;
+      clearTimeout(_logoZenSingleTimer);
+      clearTimeout(_logoTapWindowTimer);
+      if (_logoTapCount >= 5) {
+        _logoTapCount = 0;
+        if (state.zenMode) setZenMode(false);
+        state.debugLogEnabled = true;
+        document.getElementById('btnOpenDebugLog').classList.remove('hidden');
+        cadLog('SYS', 'Режим логирования активирован (5 тапов по логотипу)', { bodies: state.bodies.length, sketches: state.sketches.length });
+        openDebugLogModal();
+        showToast('🐞 Отладка и логирование включены');
+        return;
+      }
+      _logoTapWindowTimer = setTimeout(() => { _logoTapCount = 0; }, 1600);
+      if (_logoTapCount === 1 && !state.zenMode) {
+        _logoZenSingleTimer = setTimeout(() => {
+          if (_logoTapCount === 1) {
+            _logoTapCount = 0;
+            setZenMode(true);
+          }
+        }, 320);
+      }
+    }
+
+    document.getElementById('btnLogoZen').addEventListener('click', handleSecretLogoTap);
+    document.getElementById('btnLogoRestore').addEventListener('click', () => {
+      _logoTapCount++;
+      clearTimeout(_logoTapWindowTimer);
+      if (_logoTapCount >= 5) {
+        _logoTapCount = 0;
+        setZenMode(false);
+        state.debugLogEnabled = true;
+        document.getElementById('btnOpenDebugLog').classList.remove('hidden');
+        cadLog('SYS', 'Режим логирования активирован из Zen-режима');
+        openDebugLogModal();
+        return;
+      }
+      _logoTapWindowTimer = setTimeout(() => { _logoTapCount = 0; }, 1600);
+      setZenMode(false);
+    });
 
     let zenMenuCollapsed = false;
     document.getElementById('btnCollapseZenMenu').addEventListener('click', () => {
@@ -2035,10 +2116,18 @@
       return geo;
     }
 
-    function csgSubtractGeometry(solidGeo, cutterGeo) {
+    function csgSubtractGeometry(solidGeo, cutterGeo, debugLabel = '') {
+      const t0 = performance.now();
       const aPolys = geometryToCSGPolygons(solidGeo);
       const bPolys = geometryToCSGPolygons(cutterGeo);
-      if (aPolys.length === 0 || bPolys.length === 0 || aPolys.length > 8000) return solidGeo;
+      if (aPolys.length === 0 || bPolys.length === 0) {
+        cadLog('CSG-WARN', `Пустая геометрия в CSG (${debugLabel})`, { a: aPolys.length, b: bPolys.length });
+        return solidGeo;
+      }
+      if (aPolys.length > 25000) {
+        cadLog('CSG-LIMIT', `Превышен лимит полигонов > 25000 (${debugLabel})`, { aPolys: aPolys.length });
+        return solidGeo;
+      }
       const a = new CSGBSPNode(aPolys);
       const b = new CSGBSPNode(bPolys);
       a.invert();
@@ -2049,7 +2138,10 @@
       b.invert();
       a.build(b.allPolygons());
       a.invert();
-      return csgPolygonsToGeometry(a.allPolygons());
+      const resPolys = a.allPolygons();
+      const dt = (performance.now() - t0).toFixed(1);
+      cadLog('3D-CSG', `Вычет выполнен (${debugLabel}) за ${dt}мс`, { inA: aPolys.length, inB: bPolys.length, out: resPolys.length });
+      return csgPolygonsToGeometry(resPolys);
     }
 
     function collectAllCutBodies() {
@@ -2157,21 +2249,24 @@
         collectCutBodiesForPlane(body.plane).forEach(cutB => {
           if (typeof body.nestingDepth === 'number' && typeof cutB.nestingDepth === 'number' && body.nestingDepth > cutB.nestingDepth) return;
           const [cZ0, cZ1] = getZRange(cutB);
-          // 2D cutHoles MUST only be used for TRUE through-holes spanning the entire solid Z range!
-          // Blind pockets/slots go to 3D CSG so their bottom floor is preserved.
           const isThroughCut = (cZ0 <= bZ0 + 0.05) && (cZ1 >= bZ1 - 0.05);
-          if (!isThroughCut || !sameShift(cutB)) return;
+          if (!isThroughCut || !sameShift(cutB)) {
+            cadLog('2D-HOLE-SKIP', `${cutB.name} -> 3D CSG`, { reason: !isThroughCut ? 'blind_or_z_mismatch' : 'shift_mismatch', bodyZ: [bZ0, bZ1], cutZ: [cZ0, cZ1], cutDir: cutB.direction });
+            return;
+          }
 
           const cutSk = state.sketches.find(s => s.id === cutB.sketchId);
           if (cutSk) {
             const hp = generate2DPointsForSketch(cutSk, 0);
             if (hp.length >= 3) {
               const allInside = safeOuterPts.length >= 3 && hp.every(p => pointInPolygon2D(p.u, p.v, safeOuterPts));
-              // Also ensure this hole does not overlap or touch any already accepted 2D hole (prevents ShapeGeometry self-intersection!)
               const overlapsExistingHole = cutHoles.some(existingHp => polygonsOverlapOrTouch2D(hp, existingHp, Math.max(hTopOut, hBotOut) * 2 + 0.25));
               if (allInside && !overlapsExistingHole) {
                 cutHoles.push(hp);
                 handledCutIds.add(cutB.id);
+                cadLog('2D-HOLE-OK', `${cutB.name} встроено как сквозное 2D-отверстие в ${body.name}`);
+              } else {
+                cadLog('2D-HOLE-SKIP', `${cutB.name} -> 3D CSG`, { reason: !allInside ? 'near_or_outside_edge' : 'overlaps_other_hole' });
               }
             }
           }
@@ -2209,8 +2304,13 @@
           if (typeof body.nestingDepth === 'number' && typeof cutB.nestingDepth === 'number' && body.nestingDepth > cutB.nestingDepth) return;
           const cutGeo = buildCutterGeometryForCSG(cutB);
           if (!cutGeo || !cutGeo.boundingBox) return;
+          geom.computeBoundingBox();
           if (geom.boundingBox.intersectsBox(cutGeo.boundingBox)) {
-            geom = csgSubtractGeometry(geom, cutGeo);
+            geom = csgSubtractGeometry(geom, cutGeo, `${body.name} - ${cutB.name}`);
+          } else {
+            cadLog('CSG-MISS', `${cutB.name} НЕ пересекает ${body.name} (промах по направлению/координатам)`, {
+              cutDir: cutB.direction, cutPlane: cutB.plane, cutOff: cutB.offset, cutDepth: cutB.depth
+            });
           }
         });
       }
@@ -3412,6 +3512,7 @@
           return;
         }
       }
+      cadLog('SKETCH', `Добавлен эскиз ${shapeType} на ${state.activePlane}`, { offset: state.planeOffset, params });
       const names = { rect: 'Прямоугольник', circle: 'Круг', slot: 'Паз', hex: 'Гайка Hex', poly: 'Контур' };
       const sk = {
         id: genId('sk'),
@@ -4026,16 +4127,63 @@
       document.getElementById('btnOpExtrudeMutual').className = op === 'mutual' ? 'py-1.5 rounded-lg bg-amber-600 text-white text-[10px] font-semibold' : 'py-1.5 rounded-lg text-slate-300 text-[10px] font-semibold';
     }
     document.getElementById('btnOpExtrudeAdd').addEventListener('click', () => setPendingOp('add'));
+    function computeBoxIntersectionVolume(boxA, boxB) {
+      if (!boxA || !boxB || !boxA.intersectsBox(boxB)) return 0;
+      const dx = Math.max(0, Math.min(boxA.max.x, boxB.max.x) - Math.max(boxA.min.x, boxB.min.x));
+      const dy = Math.max(0, Math.min(boxA.max.y, boxB.max.y) - Math.max(boxA.min.y, boxB.min.y));
+      const dz = Math.max(0, Math.min(boxA.max.z, boxB.max.z) - Math.max(boxA.min.z, boxB.min.z));
+      return dx * dy * dz;
+    }
+
+    function resolveBestCutDirection(sk, depth, preferredDir = 'forward') {
+      if (!sk) return preferredDir;
+      const solids = collectAllSolidBodies();
+      if (solids.length === 0) return preferredDir;
+      const testDirVol = (dir) => {
+        const tmpCut = { sketchId: sk.id, plane: sk.plane, offset: sk.offset || 0, depth: depth || 15, direction: dir, edgeMode: 'none', edgeAmount: 0 };
+        const cGeo = buildCutterGeometryForCSG(tmpCut);
+        if (!cGeo || !cGeo.boundingBox) return 0;
+        let totalVol = 0;
+        solids.forEach(sb => {
+          const sGeo = sb.computedGeometry || buildSingleBodyGeometry(sb);
+          if (sGeo) {
+            if (!sGeo.boundingBox) sGeo.computeBoundingBox();
+            totalVol += computeBoxIntersectionVolume(sGeo.boundingBox, cGeo.boundingBox);
+          }
+        });
+        cGeo.dispose();
+        return totalVol;
+      };
+      const vPref = testDirVol(preferredDir);
+      if (vPref > 0.5) return preferredDir;
+      const oppDir = preferredDir === 'forward' ? 'backward' : 'forward';
+      const vOpp = testDirVol(oppDir);
+      if (vOpp > vPref + 0.5) {
+        cadLog('AUTO-DIR', `Направление выреза развёрнуто ${preferredDir} -> ${oppDir} (пересечение с деталью)`, { vPref: Math.round(vPref), vOpp: Math.round(vOpp) });
+        return oppDir;
+      }
+      const vBoth = testDirVol('both');
+      if (vBoth > 0.5) {
+        cadLog('AUTO-DIR', `Направление выреза переключено на 'both' (↔ Обе)`, { vBoth: Math.round(vBoth) });
+        return 'both';
+      }
+      return preferredDir;
+    }
+
     const autoDirectInward = (label) => {
       const sk = state.sketches.find(s => s.id === state.selectedSketchId);
-      if (sk && Math.abs(sk.offset || 0) > 0.1 && state.pendingExtrudeDir === 'forward') {
-        state.pendingExtrudeDir = 'backward';
+      if (!sk) return;
+      const depth = Math.max(0.5, parseFloat(document.getElementById('rngExtrudeDist')?.value) || 15);
+      const bestDir = resolveBestCutDirection(sk, depth, state.pendingExtrudeDir || 'forward');
+      if (bestDir !== state.pendingExtrudeDir) {
+        state.pendingExtrudeDir = bestDir;
         document.querySelectorAll('.ext-dir-btn').forEach(b => {
-          b.className = b.dataset.dir === 'backward'
+          b.className = b.dataset.dir === bestDir
             ? 'ext-dir-btn py-1.5 rounded-lg bg-blue-600 text-white text-[10px] font-semibold'
             : 'ext-dir-btn py-1.5 rounded-lg text-slate-300 text-[10px] font-semibold';
         });
-        showToast(`${label}: внутрь детали (− Назад)`);
+        const dirLbl = bestDir === 'backward' ? '− Назад' : (bestDir === 'both' ? '↔ Обе' : '+ Вперёд');
+        showToast(`${label}: авто-направление внутрь детали (${dirLbl})`);
       }
     };
     document.getElementById('btnOpExtrudeCut').addEventListener('click', () => {
@@ -4120,6 +4268,8 @@
       const createdBodies = targets.map((targetSk, idx) => {
         const nDepth = nestingDepths[idx];
         const effOp = (op === 'add' && nDepth % 2 === 1) ? 'cut' : op;
+        const effDir = (effOp === 'cut' || effOp === 'mutual') ? resolveBestCutDirection(targetSk, depth, dir) : dir;
+        cadLog('EXTRUDE', `Создание объекта ${effOp}`, { plane: targetSk.plane, offset: targetSk.offset, depth, dir: effDir, shape: targetSk.shapeType });
         return {
           id: genId('body'),
           name: effOp === 'cut'
@@ -4127,7 +4277,7 @@
             : `Тело #${state.bodies.length + idx + 1}`,
           type: 'extrude', operation: effOp, sketchId: targetSk.id,
           plane: targetSk.plane, offset: targetSk.offset, depth,
-          direction: dir,
+          direction: effDir,
           nestingDepth: nDepth,
           edgeMode: 'none', edgeAmount: 0, faceTarget: 'top', draftAngle: 0,
           shiftX: 0, shiftY: 0, shiftZ: 0
@@ -5266,6 +5416,73 @@
     });
     document.getElementById('inpBodyColor').addEventListener('input', e => {
       setBodyColor(e.target.value);
+    });
+
+    function dumpCurrentSceneToLog() {
+      cadLog('SCENE-DUMP', `Скетчей: ${state.sketches.length}, Тел верхнего уровня: ${state.bodies.length}`);
+      state.bodies.forEach((b, idx) => {
+        if (b.type === 'group' && Array.isArray(b.children)) {
+          cadLog('GROUP', `#${idx + 1} ${b.name} (детей: ${b.children.length})`);
+          b.children.forEach(ch => {
+            cadLog('  CHILD', `${ch.name} [${ch.operation}]`, { plane: ch.plane, off: ch.offset, depth: ch.depth, dir: ch.direction, skId: ch.sketchId });
+          });
+        } else {
+          const vCnt = b.computedGeometry?.attributes?.position?.count || 0;
+          cadLog('BODY', `#${idx + 1} ${b.name} [${b.operation}]`, { plane: b.plane, off: b.offset, depth: b.depth, dir: b.direction, tris: Math.floor(vCnt / 3) });
+        }
+      });
+      const mf = checkAllBodiesManifold();
+      cadLog('MANIFOLD', mf.isManifold ? '✓ Сетка замкнута (0 открытых рёбер)' : `⚠ Открытых рёбер: ${mf.totalOpen}`, mf);
+    }
+
+    function renderDebugLogView() {
+      const pre = document.getElementById('debugLogContent');
+      const cnt = document.getElementById('lblDebugLogCount');
+      if (!pre || !cnt) return;
+      cnt.textContent = `${state.opLogs.length} зап.`;
+      pre.textContent = state.opLogs.length ? state.opLogs.join('\n') : 'Лог пуст. Нажмите «🔍 Снимок сцены» или выполните операцию.';
+      pre.scrollTop = pre.scrollHeight;
+    }
+
+    function openDebugLogModal() {
+      renderDebugLogView();
+      document.getElementById('debugLogModal').classList.remove('hidden');
+    }
+
+    document.getElementById('btnOpenDebugLog').addEventListener('click', openDebugLogModal);
+    document.getElementById('btnCloseDebugLog').addEventListener('click', () => {
+      document.getElementById('debugLogModal').classList.add('hidden');
+    });
+    document.getElementById('btnDumpStateLog').addEventListener('click', () => {
+      dumpCurrentSceneToLog();
+      renderDebugLogView();
+    });
+    document.getElementById('btnClearDebugLog').addEventListener('click', () => {
+      state.opLogs = [];
+      renderDebugLogView();
+    });
+    document.getElementById('btnCopyDebugLog').addEventListener('click', async () => {
+      if (state.opLogs.length === 0) dumpCurrentSceneToLog();
+      const txt = state.opLogs.join('\n');
+      try {
+        await navigator.clipboard.writeText(txt);
+        showToast('Лог скопирован в буфер обмена');
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = txt; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); ta.remove();
+        showToast('Лог скопирован');
+      }
+    });
+    document.getElementById('btnDownloadDebugLog').addEventListener('click', async () => {
+      if (state.opLogs.length === 0) dumpCurrentSceneToLog();
+      const blob = new Blob([state.opLogs.join('\n')], { type: 'text/plain;charset=utf-8' });
+      const fileName = `pocketcad_debug_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      showToast(`Лог сохранён: ${fileName}`);
     });
 
   </script>
